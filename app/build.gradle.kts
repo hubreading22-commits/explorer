@@ -62,3 +62,7 @@ dependencies {
     implementation("androidx.media3:media3-exoplayer:$media3Version")
     implementation("androidx.media3:media3-ui:$media3Version")
 }
+
+configurations.all {
+    exclude(group = "org.bouncycastle", module = "bcprov-jdk15on")
+}
