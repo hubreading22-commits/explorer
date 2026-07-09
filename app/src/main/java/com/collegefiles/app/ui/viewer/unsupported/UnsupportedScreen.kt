@@ -2,7 +2,7 @@ package com.collegefiles.app.ui.viewer.unsupported
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Block
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -26,7 +26,7 @@ fun UnsupportedScreen(file: FileItem?, onBack: () -> Unit) {
             verticalArrangement = Arrangement.Center
         ) {
             Icon(
-                imageVector = Icons.Default.Block,
+                imageVector = Icons.Default.Warning,
                 contentDescription = null,
                 modifier = Modifier.size(64.dp),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant
@@ -64,7 +64,7 @@ fun RestrictedScreen(file: FileItem?, onBack: () -> Unit) {
             verticalArrangement = Arrangement.Center
         ) {
             Icon(
-                imageVector = Icons.Default.Block,
+                imageVector = Icons.Default.Warning,
                 contentDescription = null,
                 modifier = Modifier.size(64.dp),
                 tint = MaterialTheme.colorScheme.error
