@@ -1,0 +1,124 @@
+package com.smbcore.internal.file
+
+import com.hierynomus.msdtyp.AccessMask
+import com.hierynomus.msfscc.FileAttributes
+import com.hierynomus.mssmb2.SMB2CreateDisposition
+import com.hierynomus.mssmb2.SMB2CreateOptions
+import com.hierynomus.mssmb2.SMB2ShareAccess
+import com.hierynomus.smbj.share.DiskShare
+import com.smbcore.config.SmbConfig
+import com.smbcore.internal.connection.ConnectionManagerImpl
+import com.smbcore.internal.stream.SmbFileStreamImpl
+import com.smbcore.io.FileStream
+import com.smbcore.model.FileMetadata
+import com.smbcore.model.SmbError
+import com.smbcore.model.SmbResult
+import java.io.InputStream
+import java.time.Instant
+
+internal class FileServiceImpl(
+    private val connectionManager: ConnectionManagerImpl,
+    private val config: SmbConfig
+) {
+    private fun <T> withShare(shareName: String, block: (DiskShare) -> SmbResult<T>): SmbResult<T> {
+        val session = connectionManager.session ?: return SmbResult.Failure(SmbError.NetworkUnavailable)
+        return try {
+            val share = session.connectShare(shareName) as? DiskShare
+                ?: return SmbResult.Failure(SmbError.ShareNotFound)
+            val result = block(share)
+            // Note: In a real SDK, shares might be cached or kept open. Here we close after ops.
+            // Except for openFile which keeps the share open conceptually, but closing DiskShare 
+            // doesn't immediately kill active file handles in SMBJ (it might on some servers).
+            // For simplicity, we skip closing the share explicitly here or manage it carefully.
+            result
+        } catch (e: com.hierynomus.mssmb2.SMBApiException) {
+            when {
+                e.status.name.contains("ACCESS_DENIED") -> SmbResult.Failure(SmbError.PermissionDenied)
+                e.status.name.contains("OBJECT_NAME_NOT_FOUND") -> SmbResult.Failure(SmbError.FileNotFound)
+                else -> SmbResult.Failure(SmbError.Unknown(e.message ?: "Unknown SMB Error"))
+            }
+        } catch (e: Exception) {
+            SmbResult.Failure(SmbError.Unknown("Failed operation: ${e.message}"))
+        }
+    }
+
+    fun getMetadata(shareName: String, path: String): SmbResult<FileMetadata> = withShare(shareName) { share ->
+        val info = share.getFileInformation(path)
+        val isDir = (info.basicInformation.fileAttributes and FileAttributes.FILE_ATTRIBUTE_DIRECTORY.value) != 0L
+        val metadata = FileMetadata(
+            path = path,
+            name = path.substringAfterLast('\\', path),
+            isDirectory = isDir,
+            size = info.standardInformation.endOfFile,
+            modified = Instant.ofEpochMilli(info.basicInformation.lastWriteTime.toEpochMillis()),
+            created = Instant.ofEpochMilli(info.basicInformation.creationTime.toEpochMillis()),
+            permissions = info.basicInformation.fileAttributes.toInt(),
+            owner = ""
+        )
+        SmbResult.Success(metadata)
+    }
+
+    fun openFile(shareName: String, path: String): SmbResult<FileStream> = withShare(shareName) { share ->
+        val file = share.openFile(
+            path,
+            java.util.EnumSet.of(AccessMask.GENERIC_READ),
+            java.util.EnumSet.of(FileAttributes.FILE_ATTRIBUTE_NORMAL),
+            SMB2ShareAccess.ALL,
+            SMB2CreateDisposition.FILE_OPEN,
+            java.util.EnumSet.of(SMB2CreateOptions.FILE_NON_DIRECTORY_FILE)
+        )
+        val size = share.getFileInformation(path).standardInformation.endOfFile
+        SmbResult.Success(SmbFileStreamImpl(file, size))
+    }
+
+    fun upload(input: InputStream, shareName: String, remotePath: String): SmbResult<Unit> = withShare(shareName) { share ->
+        val file = share.openFile(
+            remotePath,
+            java.util.EnumSet.of(AccessMask.GENERIC_WRITE),
+            java.util.EnumSet.of(FileAttributes.FILE_ATTRIBUTE_NORMAL),
+            SMB2ShareAccess.ALL,
+            SMB2CreateDisposition.FILE_OVERWRITE_IF,
+            java.util.EnumSet.of(SMB2CreateOptions.FILE_NON_DIRECTORY_FILE)
+        )
+        file.outputStream.use { output ->
+            input.copyTo(output, config.bufferSize)
+        }
+        file.close()
+        SmbResult.Success(Unit)
+    }
+
+    fun delete(shareName: String, path: String): SmbResult<Unit> = withShare(shareName) { share ->
+        share.rm(path)
+        SmbResult.Success(Unit)
+    }
+
+    fun rename(shareName: String, oldPath: String, newName: String): SmbResult<Unit> = withShare(shareName) { share ->
+        val newPath = oldPath.substringBeforeLast('\\', "") + "\\" + newName
+        // SMBJ rename
+        val file = share.openFile(
+            oldPath,
+            java.util.EnumSet.of(AccessMask.DELETE),
+            null,
+            SMB2ShareAccess.ALL,
+            SMB2CreateDisposition.FILE_OPEN,
+            null
+        )
+        file.rename(newPath)
+        file.close()
+        SmbResult.Success(Unit)
+    }
+
+    fun copy(sourceShare: String, sourcePath: String, destShare: String, destPath: String): SmbResult<Unit> {
+        // Implementation stub for cross-share or intra-share copy
+        return SmbResult.Failure(SmbError.Unknown("Copy not fully implemented in stub"))
+    }
+
+    fun move(sourceShare: String, sourcePath: String, destShare: String, destPath: String): SmbResult<Unit> {
+        return SmbResult.Failure(SmbError.Unknown("Move not fully implemented in stub"))
+    }
+
+    fun createFolder(shareName: String, path: String): SmbResult<Unit> = withShare(shareName) { share ->
+        share.mkdir(path)
+        SmbResult.Success(Unit)
+    }
+}

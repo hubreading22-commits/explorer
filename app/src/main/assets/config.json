@@ -1,0 +1,11 @@
+{
+  "capabilities": [
+    "VIEW_PDF",
+    "VIEW_IMAGE",
+    "VIEW_TEXT",
+    "UPLOAD",
+    "DELETE",
+    "RENAME",
+    "CREATE_FOLDER"
+  ]
+}
