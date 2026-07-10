@@ -36,6 +36,7 @@ data class PdfViewerState(
 )
 
 class PdfViewerViewModel(
+    private val shareName: String,
     private val file: FileItem,
     private val cacheDir: File
 ) : ViewModel() {
@@ -48,7 +49,6 @@ class PdfViewerViewModel(
 
     private fun loadPdf() {
         viewModelScope.launch {
-            val shareName = file.path.substringBefore("\\")
             val result = withContext(Dispatchers.IO) {
                 AppModule.smbClient.openFile(shareName, file.path)
             }

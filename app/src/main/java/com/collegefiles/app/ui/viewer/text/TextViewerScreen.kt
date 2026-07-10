@@ -31,7 +31,7 @@ data class TextViewerState(
     val title: String = ""
 )
 
-class TextViewerViewModel(private val file: FileItem) : ViewModel() {
+class TextViewerViewModel(private val shareName: String, private val file: FileItem) : ViewModel() {
     private val _state = MutableStateFlow(TextViewerState(title = file.name))
     val state: StateFlow<TextViewerState> = _state.asStateFlow()
 
@@ -42,10 +42,7 @@ class TextViewerViewModel(private val file: FileItem) : ViewModel() {
     private fun loadFile() {
         viewModelScope.launch {
             val result = withContext(Dispatchers.IO) {
-                AppModule.smbClient.openFile(
-                    file.path.substringBefore("\\"),
-                    file.path
-                )
+                AppModule.smbClient.openFile(shareName, file.path)
             }
 
             when (result) {

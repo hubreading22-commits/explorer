@@ -4,6 +4,7 @@ import com.smbcore.model.FileItem
 
 data class ViewerState(
     val file: FileItem? = null,
+    val shareName: String = "",
     val destination: ViewerDestination = ViewerDestination.Unsupported,
     val isLoading: Boolean = false,
     val error: String? = null,

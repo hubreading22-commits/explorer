@@ -34,7 +34,7 @@ data class ImageViewerState(
     val title: String = ""
 )
 
-class ImageViewerViewModel(private val file: FileItem) : ViewModel() {
+class ImageViewerViewModel(private val shareName: String, private val file: FileItem) : ViewModel() {
     private val _state = MutableStateFlow(ImageViewerState(title = file.name))
     val state: StateFlow<ImageViewerState> = _state.asStateFlow()
 
@@ -42,7 +42,6 @@ class ImageViewerViewModel(private val file: FileItem) : ViewModel() {
 
     private fun loadImage() {
         viewModelScope.launch {
-            val shareName = file.path.substringBefore("\\")
             val result = withContext(Dispatchers.IO) {
                 AppModule.smbClient.openFile(shareName, file.path)
             }

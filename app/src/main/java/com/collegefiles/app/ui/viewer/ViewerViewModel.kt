@@ -15,12 +15,12 @@ class ViewerViewModel : ViewModel() {
     private val _state = MutableStateFlow(ViewerState())
     val state: StateFlow<ViewerState> = _state.asStateFlow()
 
-    fun selectFile(file: FileItem) {
+    fun selectFile(file: FileItem, shareName: String) {
         val policy = AppModule.contentPolicy
         val requiredCapability = file.type.toCapability()
 
         if (requiredCapability != null && !policy.hasCapability(requiredCapability)) {
-            _state.update { it.copy(file = file, isRestricted = true, title = file.name) }
+            _state.update { it.copy(file = file, shareName = shareName, isRestricted = true, title = file.name) }
             return
         }
 
@@ -36,6 +36,7 @@ class ViewerViewModel : ViewModel() {
         _state.update {
             it.copy(
                 file = file,
+                shareName = shareName,
                 destination = destination,
                 isRestricted = false,
                 title = file.name,

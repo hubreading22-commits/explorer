@@ -111,7 +111,7 @@ fun AppNavigation() {
                         }
                     } else {
                         // Open internally
-                        viewerViewModel.selectFile(file)
+                        viewerViewModel.selectFile(file, explorerViewModel.state.value.currentShare)
                         navController.navigate("viewer")
                     }
                 }
@@ -133,16 +133,16 @@ fun AppNavigation() {
                     ViewerDestination.Pdf -> {
                         val cacheDir = LocalContext.current.cacheDir
                         PdfViewerScreen(
-                            viewModel = remember(file?.path) { PdfViewerViewModel(file!!, cacheDir) },
+                            viewModel = remember(file?.path) { PdfViewerViewModel(state.shareName, file!!, cacheDir) },
                             onBack = onBack
                         )
                     }
                     ViewerDestination.Image -> ImageViewerScreen(
-                        viewModel = remember(file?.path) { ImageViewerViewModel(file!!) },
+                        viewModel = remember(file?.path) { ImageViewerViewModel(state.shareName, file!!) },
                         onBack = onBack
                     )
                     ViewerDestination.Text -> TextViewerScreen(
-                        viewModel = remember(file?.path) { TextViewerViewModel(file!!) },
+                        viewModel = remember(file?.path) { TextViewerViewModel(state.shareName, file!!) },
                         onBack = onBack
                     )
                     ViewerDestination.Video -> VideoPlayerScreen(file = file, onBack = onBack)
