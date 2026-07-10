@@ -292,11 +292,19 @@ fun ExplorerScreen(
                     )
                 }
                 if (fileOpsViewModel.hasClipboardItem) {
-                    ExtendedFloatingActionButton(
-                        onClick = { fileOpsViewModel.paste(state.currentShare, state.breadcrumbs.joinToString("\\")) { viewModel.refresh() } },
-                        icon = { Icon(Icons.Default.ContentPaste, "Paste") },
-                        text = { Text("Paste") }
-                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        SmallFloatingActionButton(
+                            onClick = { fileOpsViewModel.clearClipboard() },
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer
+                        ) {
+                            Icon(Icons.Default.Close, "Cancel Paste")
+                        }
+                        ExtendedFloatingActionButton(
+                            onClick = { fileOpsViewModel.paste(state.currentShare, state.breadcrumbs.joinToString("\\")) { viewModel.refresh() } },
+                            icon = { Icon(Icons.Default.ContentPaste, "Paste") },
+                            text = { Text("Paste") }
+                        )
+                    }
                 }
             }
         }

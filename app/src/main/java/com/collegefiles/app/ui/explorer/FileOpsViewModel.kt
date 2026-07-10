@@ -153,6 +153,12 @@ class FileOpsViewModel(
         _state.update { it.copy(showActionSheet = false, successMessage = "Cut to clipboard") }
     }
 
+    fun clearClipboard() {
+        clipboardItem = null
+        // Trigger a state update so the UI refreshes
+        _state.update { it.copy(successMessage = null) }
+    }
+
     fun paste(currentShare: String, currentPath: String, onSuccess: () -> Unit) {
         val clip = clipboardItem ?: return
         _state.update { it.copy(isLoading = true) }
