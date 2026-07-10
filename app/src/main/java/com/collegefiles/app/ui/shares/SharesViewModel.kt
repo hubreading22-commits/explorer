@@ -21,9 +21,7 @@ class SharesViewModel(
     private val _state = MutableStateFlow(SharesState())
     val state: StateFlow<SharesState> = _state.asStateFlow()
 
-    init {
-        loadShares()
-    }
+
 
     fun refresh() {
         loadShares()

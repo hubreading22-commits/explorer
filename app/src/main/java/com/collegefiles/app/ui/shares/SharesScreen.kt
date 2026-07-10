@@ -26,6 +26,10 @@ fun SharesScreen(
 ) {
     val state by viewModel.state.collectAsState()
 
+    LaunchedEffect(Unit) {
+        viewModel.refresh()
+    }
+
     LaunchedEffect(state.sessionExpired) {
         if (state.sessionExpired) {
             onSessionExpired()
