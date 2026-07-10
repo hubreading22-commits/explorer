@@ -55,8 +55,8 @@ internal class ConnectionManagerImpl(private val config: SmbConfig) {
                 e.status.name.contains("ACCESS_DENIED") -> SmbResult.Failure(SmbError.PermissionDenied)
                 else -> SmbResult.Failure(SmbError.Unknown(e.message ?: "Unknown SMB Error"))
             }
-        } catch (e: Exception) {
-            SmbResult.Failure(SmbError.NetworkUnavailable)
+        } catch (e: Throwable) {
+            SmbResult.Failure(SmbError.Unknown(e.toString()))
         }
     }
 
