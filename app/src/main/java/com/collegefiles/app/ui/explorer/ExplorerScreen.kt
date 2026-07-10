@@ -351,6 +351,7 @@ fun ExplorerScreen(
                 }
             }
         }
+    }
 }
 
 @Composable

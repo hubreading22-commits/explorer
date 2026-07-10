@@ -20,6 +20,7 @@ import androidx.activity.viewModels
 import com.collegefiles.app.ui.sync.ShareReceiverViewModel
 import android.content.Intent
 import android.net.Uri
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     private val shareReceiverViewModel: ShareReceiverViewModel by viewModels {
