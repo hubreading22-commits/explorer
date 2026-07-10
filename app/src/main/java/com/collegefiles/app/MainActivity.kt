@@ -15,6 +15,7 @@ import android.os.Build
 import android.content.pm.PackageManager
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.work.WorkManager
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -27,6 +28,7 @@ class MainActivity : ComponentActivity() {
         // COLD BOOT DETECTION: Wipe credentials if the app was swiped away (fresh launch)
         if (savedInstanceState == null) {
             AppModule.credentialStore.clear()
+            WorkManager.getInstance(this).cancelAllWork()
         }
 
         // Request POST_NOTIFICATIONS permission for Android 13+ so upload notifications show

@@ -109,10 +109,7 @@ internal class ConnectionManagerImpl(
     fun logout(): SmbResult<Unit> {
         return try {
             credentialStore?.clear()
-            try { session?.logoff() } catch (_: Exception) {}
-            try { connection?.close() } catch (_: Exception) {}
-            session = null
-            connection = null
+            invalidate()
             currentUser = null
             _connectionState.value = ConnectionState.DISCONNECTED
             SmbResult.Success(Unit)
@@ -120,6 +117,13 @@ internal class ConnectionManagerImpl(
             _connectionState.value = ConnectionState.DISCONNECTED
             SmbResult.Failure(SmbError.Unknown("Failed to logout: ${e.message}"))
         }
+    }
+
+    fun invalidate() {
+        try { session?.logoff() } catch (_: Exception) {}
+        try { connection?.close() } catch (_: Exception) {}
+        session = null
+        connection = null
     }
 
     fun isConnected(): Boolean {

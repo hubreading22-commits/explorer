@@ -75,7 +75,9 @@ class UploadWorker(
                         "bytesTransferred" to progress.bytesTransferred,
                         "totalBytes" to progress.totalBytes,
                         "speedBytesPerSecond" to progress.speedBytesPerSecond,
-                        "estimatedRemainingSeconds" to progress.estimatedRemainingSeconds
+                        "estimatedRemainingSeconds" to progress.estimatedRemainingSeconds,
+                        "fileName" to fileName,
+                        "remotePath" to remotePath
                     ))
                     
                     val notif = NotificationCompat.Builder(context, CHANNEL_ID)
@@ -99,7 +101,11 @@ class UploadWorker(
                         is UploadState.Failed -> "Failed: ${state.error}"
                         is UploadState.AlreadyExists -> "Already Exists"
                     }
-                    setProgress(workDataOf("state" to stateStr))
+                    setProgress(workDataOf(
+                        "state" to stateStr,
+                        "fileName" to fileName,
+                        "remotePath" to remotePath
+                    ))
                     
                     if (state is UploadState.Failed || state is UploadState.AlreadyExists) {
                         result = Result.failure(workDataOf("error" to stateStr))

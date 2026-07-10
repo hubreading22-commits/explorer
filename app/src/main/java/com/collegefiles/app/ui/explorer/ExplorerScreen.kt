@@ -38,6 +38,7 @@ fun ExplorerScreen(
     fileOpsViewModel: FileOpsViewModel,
     onNavigateBackToShares: () -> Unit,
     onSessionExpired: () -> Unit,
+    onLogout: () -> Unit,
     onFileClick: (FileItem) -> Unit = {}
 ) {
     val state by viewModel.state.collectAsState()
@@ -52,6 +53,8 @@ fun ExplorerScreen(
     val canDelete = policy.hasCapability(Capability.DELETE)
     val canUpload = policy.hasCapability(Capability.UPLOAD)
     val canCreateFolder = policy.hasCapability(Capability.CREATE_FOLDER)
+    
+    var showLogoutDialog by remember { mutableStateOf(false) }
 
     // File picker launcher for uploads
     val filePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
@@ -68,6 +71,20 @@ fun ExplorerScreen(
     }
     
     val uploads by AppModule.uploadManager.observeUploads().collectAsState(initial = emptyList())
+    var completedUploads by remember { mutableStateOf(setOf<java.util.UUID>()) }
+
+    LaunchedEffect(uploads) {
+        val newlyFinished = uploads.filter { it.state.isFinished && !completedUploads.contains(it.id) }
+        for (work in newlyFinished) {
+            completedUploads = completedUploads + work.id
+            if (work.state == androidx.work.WorkInfo.State.SUCCEEDED) {
+                viewModel.refresh()
+            } else if (work.state == androidx.work.WorkInfo.State.FAILED) {
+                val errorMsg = work.outputData.getString("error") ?: "Upload failed"
+                snackbarHostState.showSnackbar(errorMsg)
+            }
+        }
+    }
 
     LaunchedEffect(opsState.successMessage) {
         opsState.successMessage?.let {
@@ -139,6 +156,32 @@ fun ExplorerScreen(
         )
     }
 
+    if (showLogoutDialog) {
+        val hasActiveUploads = uploads.any { !it.state.isFinished }
+        AlertDialog(
+            onDismissRequest = { showLogoutDialog = false },
+            title = { Text("Logout") },
+            text = { 
+                Text(if (hasActiveUploads) "You have active uploads running. Logging out will cancel them immediately. Are you sure you want to logout?" else "Are you sure you want to logout?") 
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showLogoutDialog = false
+                        if (hasActiveUploads) {
+                            androidx.work.WorkManager.getInstance(context).cancelAllWork()
+                        }
+                        onLogout()
+                    },
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                ) { Text("Logout") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showLogoutDialog = false }) { Text("Cancel") }
+            }
+        )
+    }
+
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
@@ -163,6 +206,9 @@ fun ExplorerScreen(
                             IconButton(onClick = { viewModel.refresh() }) {
                                 Icon(Icons.Default.Refresh, contentDescription = "Refresh")
                             }
+                            IconButton(onClick = { showLogoutDialog = true }) {
+                                Icon(Icons.Default.ExitToApp, contentDescription = "Logout")
+                            }
                         }
                     }
                 )
@@ -170,6 +216,7 @@ fun ExplorerScreen(
                     currentShare = state.currentShare,
                     breadcrumbs = state.breadcrumbs,
                     onHomeClick = { onNavigateBackToShares() },
+                    onShareRootClick = { viewModel.onHomeClick() },
                     onBreadcrumbClick = viewModel::onBreadcrumbClick
                 )
                 Divider()
@@ -263,24 +310,42 @@ fun UploadProgressBanner(workInfos: List<androidx.work.WorkInfo>) {
             
             val speedMb = speed / 1024f / 1024f
             
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(
-                    text = "Uploading... $stateStr", 
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Text(
-                    text = "${pct.toInt()}%", 
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            if (speed > 0) {
-                Text(
-                    text = String.format("%.2f MB/s", speedMb), 
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+            val fileName = progress.getString("fileName") ?: "file"
+            val remotePath = progress.getString("remotePath") ?: ""
+            val displayPath = if (remotePath.contains("\\")) remotePath.substringBeforeLast('\\') else "root"
+            
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "$stateStr: $fileName", 
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                    )
+                    Text(
+                        text = "To: $displayPath",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                    )
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                Column(horizontalAlignment = Alignment.End) {
+                    Text(
+                        text = "${pct.toInt()}%", 
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    if (speed > 0) {
+                        Text(
+                            text = String.format("%.2f MB/s", speedMb), 
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
             }
             LinearProgressIndicator(
                 progress = pct / 100f, 
@@ -297,6 +362,7 @@ fun BreadcrumbRow(
     currentShare: String,
     breadcrumbs: List<String>,
     onHomeClick: () -> Unit,
+    onShareRootClick: () -> Unit,
     onBreadcrumbClick: (Int) -> Unit
 ) {
     LazyRow(
@@ -327,7 +393,7 @@ fun BreadcrumbRow(
                 text = currentShare.replaceFirstChar { it.uppercase() },
                 modifier = Modifier
                     .clip(RoundedCornerShape(4.dp))
-                    .clickable { onHomeClick() } // Clicking share root acts like Home
+                    .clickable { onShareRootClick() }
                     .padding(4.dp),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.primary
@@ -475,8 +541,14 @@ fun formatSize(size: Long): String {
 }
 
 fun formatRelativeDate(millis: Long): String {
-    // Simplified relative date for the MVP MVP
-    return "Recently"
+    if (millis <= 0) return "Unknown date"
+    val now = System.currentTimeMillis()
+    return android.text.format.DateUtils.getRelativeTimeSpanString(
+        millis, 
+        now, 
+        android.text.format.DateUtils.MINUTE_IN_MILLIS, 
+        android.text.format.DateUtils.FORMAT_ABBREV_RELATIVE
+    ).toString()
 }
 
 fun getFileName(context: Context, uri: Uri): String {

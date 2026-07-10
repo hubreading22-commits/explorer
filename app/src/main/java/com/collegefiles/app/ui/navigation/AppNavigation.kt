@@ -88,6 +88,12 @@ fun AppNavigation() {
                         popUpTo(navController.graph.id) { inclusive = true }
                     }
                 },
+                onLogout = {
+                    AppModule.smbClient.logout()
+                    navController.navigate("login") {
+                        popUpTo(0) { inclusive = true }
+                    }
+                },
                 onFileClick = { file ->
                     viewerViewModel.selectFile(file)
                     navController.navigate("viewer")

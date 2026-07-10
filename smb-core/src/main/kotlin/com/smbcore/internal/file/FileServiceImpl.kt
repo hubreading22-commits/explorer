@@ -25,21 +25,24 @@ internal class FileServiceImpl(
     private val config: SmbConfig
 ) {
     private suspend fun <T> withShare(shareName: String, block: suspend (DiskShare) -> SmbResult<T>): SmbResult<T> {
-        val connected = connectionManager.ensureConnected()
-        if (connected is SmbResult.Failure) return connected
-        val session = connectionManager.session ?: return SmbResult.Failure(SmbError.NetworkUnavailable)
-        
-        return try {
-            val share = session.connectShare(shareName) as? DiskShare
-                ?: return SmbResult.Failure(SmbError.ShareNotFound)
-            val result = block(share)
-            // Note: In a real SDK, shares might be cached or kept open. Here we close after ops.
-            // Except for openFile which keeps the share open conceptually, but closing DiskShare 
-            // doesn't immediately kill active file handles in SMBJ (it might on some servers).
-            // For simplicity, we skip closing the share explicitly here or manage it carefully.
-            result
-        } catch (e: Exception) {
-            ExceptionMapper.map(e, "Failed operation")
+        var retries = 1
+        while (true) {
+            val connected = connectionManager.ensureConnected()
+            if (connected is SmbResult.Failure) return connected
+            val session = connectionManager.session ?: return SmbResult.Failure(SmbError.NetworkUnavailable)
+            
+            try {
+                val share = session.connectShare(shareName) as? DiskShare
+                    ?: return SmbResult.Failure(SmbError.ShareNotFound)
+                return block(share)
+            } catch (e: Exception) {
+                if (retries > 0 && (e is java.io.IOException || e is com.hierynomus.mssmb2.SMBApiException)) {
+                    connectionManager.invalidate()
+                    retries--
+                    continue
+                }
+                return ExceptionMapper.map(e, "Failed operation")
+            }
         }
     }
 
@@ -170,8 +173,15 @@ internal class FileServiceImpl(
             success = true
         } catch (e: Exception) {
             onStateChange(if (e is kotlinx.coroutines.CancellationException) UploadState.Cancelled else UploadState.Failed(e.message ?: "Unknown error"))
+            
+            // If the coroutine was cancelled (e.g., from WorkManager), the Thread's interrupt flag
+            // might be set. If we don't clear it, subsequent blocking I/O calls (like share.rm)
+            // will instantly abort with ClosedByInterruptException.
+            Thread.interrupted()
+            
             try { file.close() } catch (_: Exception) {}
             try { share.rm(tempPath) } catch (_: Exception) {}
+            
             if (e is kotlinx.coroutines.CancellationException) {
                 return@withShare SmbResult.Failure(SmbError.Unknown("Upload cancelled"))
             } else {
