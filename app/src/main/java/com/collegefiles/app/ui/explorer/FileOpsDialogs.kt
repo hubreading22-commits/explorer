@@ -135,7 +135,7 @@ fun FileActionSheet(
                 overflow = TextOverflow.Ellipsis,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            HorizontalDivider()
+            Divider()
             Spacer(modifier = Modifier.height(8.dp))
 
             ListItem(

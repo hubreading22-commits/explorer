@@ -168,7 +168,7 @@ fun ExplorerScreen(
                     onHomeClick = viewModel::onHomeClick,
                     onBreadcrumbClick = viewModel::onBreadcrumbClick
                 )
-                HorizontalDivider()
+                Divider()
             }
         },
         floatingActionButton = {

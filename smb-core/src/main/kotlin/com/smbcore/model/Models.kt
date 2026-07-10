@@ -7,7 +7,7 @@ data class Share(
 )
 
 enum class FileType {
-    FOLDER, PDF, IMAGE, VIDEO, AUDIO, WORD, EXCEL, POWERPOINT, ZIP, UNKNOWN
+    FOLDER, PDF, IMAGE, VIDEO, AUDIO, WORD, EXCEL, POWERPOINT, ZIP, TEXT, OFFICE, UNKNOWN
 }
 
 data class FileItem(

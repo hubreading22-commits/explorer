@@ -1,5 +1,6 @@
 package com.collegefiles.app.di
 
+import com.collegefiles.app.config.ContentPolicy
 import com.smbcore.SmbClient
 import com.smbcore.config.SmbConfig
 
