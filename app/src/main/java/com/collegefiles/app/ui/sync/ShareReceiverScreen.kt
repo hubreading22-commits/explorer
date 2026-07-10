@@ -62,18 +62,9 @@ fun ShareReceiverDialogLayer(
                 },
                 confirmButton = {
                     TextButton(onClick = { 
-                        // In a real app, this would navigate to a full-screen FolderPicker.
-                        // For now, we simulate saving to the root of a default share, 
-                        // or we could use the Explorer screen state if it was accessible here.
-                        // Since we just want to avoid errors, we'll ask the user to use the UI.
-                        // Since "reusing Explorer UI" is complex without shared viewmodels,
-                        // we'll trigger a callback to AppNavigation.
-                        
-                        // For simplicity in this demo, if NoMatch, we just dismiss. 
-                        // The user should upload manually if they changed the name.
-                        viewModel.onCancel(currentState.nextUris)
+                        viewModel.onManualUpload(currentState.uri, currentState.fileName, currentState.nextUris)
                     }) {
-                        Text("OK (Manual Upload Required)")
+                        Text("Choose Folder")
                     }
                 },
                 dismissButton = {

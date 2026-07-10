@@ -301,6 +301,8 @@ fun ExplorerScreen(
             }
         }
     ) { paddingValues ->
+        val pendingUpload by com.collegefiles.app.di.AppModule.pendingUploads.collectAsState()
+        
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -314,6 +316,21 @@ fun ExplorerScreen(
                 )
             }
             UploadProgressBanner(uploads)
+            
+            pendingUpload?.let { (uri, fileName) ->
+                PendingUploadBanner(
+                    fileName = fileName,
+                    onSaveHere = {
+                        val fullRemotePath = if (state.currentPath.isEmpty()) fileName else "${state.currentPath}\\$fileName"
+                        com.collegefiles.app.di.AppModule.uploadManager.enqueueUpload(uri, shareName, fullRemotePath)
+                        com.collegefiles.app.di.AppModule.pendingUploads.value = null
+                    },
+                    onCancel = {
+                        com.collegefiles.app.di.AppModule.pendingUploads.value = null
+                    }
+                )
+            }
+            
             Box(modifier = Modifier.weight(1f)) {
                 when {
                     state.isLoading -> {
@@ -349,6 +366,34 @@ fun ExplorerScreen(
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+fun PendingUploadBanner(fileName: String, onSaveHere: () -> Unit, onCancel: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.primaryContainer)
+            .padding(16.dp)
+    ) {
+        Text(
+            text = "Upload: $fileName",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onPrimaryContainer,
+            maxLines = 1,
+            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Row(horizontalArrangement = Arrangement.End, modifier = Modifier.fillMaxWidth()) {
+            TextButton(onClick = onCancel) {
+                Text("Cancel", color = MaterialTheme.colorScheme.onPrimaryContainer)
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            Button(onClick = onSaveHere) {
+                Text("Save Here")
             }
         }
     }

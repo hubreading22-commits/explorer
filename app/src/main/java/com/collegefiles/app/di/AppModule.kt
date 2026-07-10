@@ -29,6 +29,8 @@ object AppModule {
         
     lateinit var shareImportManager: com.collegefiles.app.sync.ShareImportManager
         private set
+        
+    val pendingUploads = kotlinx.coroutines.flow.MutableStateFlow<Pair<android.net.Uri, String>?>(null)
 
     fun initialize(context: android.content.Context) {
         documentSessionService = com.collegefiles.app.sync.DocumentSessionService(

@@ -82,6 +82,11 @@ class ShareReceiverViewModel(
         processNextUri(nextUris)
     }
 
+    fun onManualUpload(uri: Uri, fileName: String, nextUris: List<Uri>) {
+        AppModule.pendingUploads.value = Pair(uri, fileName)
+        processNextUri(nextUris)
+    }
+
     fun dismiss() {
         _state.value = ShareReceiverState.Idle
     }
