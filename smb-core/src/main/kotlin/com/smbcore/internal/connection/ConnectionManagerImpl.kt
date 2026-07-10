@@ -55,14 +55,13 @@ internal class ConnectionManagerImpl(private val config: SmbConfig) {
     fun login(credentials: Credentials): SmbResult<User> {
         _connectionState.value = ConnectionState.CONNECTING
         return try {
-            if (isConnected()) {
-                logout()
-            }
+            // Always logout to ensure any stale sockets or sessions are closed
+            logout()
 
             val conn = smbClient!!.connect(config.serverIP)
             this.connection = conn
 
-            val ac = AuthenticationContext(credentials.username, credentials.password, credentials.domain)
+            val ac = AuthenticationContext(credentials.username, credentials.password.clone(), credentials.domain)
             val sess = conn.authenticate(ac)
             this.session = sess
 
@@ -110,8 +109,8 @@ internal class ConnectionManagerImpl(private val config: SmbConfig) {
         return try {
             credentialCache?.clear()
             credentialCache = null
-            session?.logoff()
-            connection?.close()
+            try { session?.logoff() } catch (_: Exception) {}
+            try { connection?.close() } catch (_: Exception) {}
             session = null
             connection = null
             currentUser = null
@@ -156,7 +155,7 @@ internal class ConnectionManagerImpl(private val config: SmbConfig) {
                     val conn = smbClient!!.connect(config.serverIP)
                     val ac = AuthenticationContext(
                         cache.credentials.username,
-                        cache.credentials.password,
+                        cache.credentials.password.clone(),
                         cache.credentials.domain
                     )
                     val sess = conn.authenticate(ac)
