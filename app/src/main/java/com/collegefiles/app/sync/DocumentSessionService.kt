@@ -40,7 +40,9 @@ class DocumentSessionService(
             repository.addSession(session)
             repository.updateSession(session.sessionId) { it.copy(state = SessionState.PREPARING) }
 
-            val result = smbClient.openFile(shareName, session.remotePath)
+            val result = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                smbClient.openFile(shareName, session.remotePath)
+            }
 
             if (result is SmbResult.Failure) {
                 repository.updateSession(session.sessionId) { it.copy(state = SessionState.FAILED, error = result.error.toString()) }
