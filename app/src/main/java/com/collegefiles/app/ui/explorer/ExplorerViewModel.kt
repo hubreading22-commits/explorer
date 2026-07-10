@@ -22,6 +22,8 @@ class ExplorerViewModel(
 
     private val _state = MutableStateFlow(ExplorerState(currentShare = shareName))
     val state: StateFlow<ExplorerState> = _state.asStateFlow()
+    
+    private var isDownloadCancelled = false
 
     init {
         loadDirectory()
@@ -57,6 +59,45 @@ class ExplorerViewModel(
     fun onHomeClick() {
         _state.update { it.copy(breadcrumbs = emptyList()) }
         loadDirectory()
+    }
+    
+    fun openDocument(file: FileItem) {
+        if (_state.value.isDownloading) return
+        
+        _state.update { it.copy(
+            isDownloading = true,
+            downloadingFileName = file.name,
+            downloadProgress = 0f
+        ) }
+        
+        isDownloadCancelled = false
+        val path = _state.value.breadcrumbs.joinToString("\\")
+        
+        viewModelScope.launch {
+            val result = AppModule.documentSessionService.openDocument(
+                shareName = shareName,
+                path = path,
+                fileItem = file,
+                onProgress = { progress ->
+                    _state.update { it.copy(downloadProgress = progress) }
+                },
+                cancelSignal = { isDownloadCancelled }
+            )
+            
+            _state.update { it.copy(
+                isDownloading = false,
+                downloadingFileName = null,
+                downloadProgress = null
+            ) }
+            
+            // Note: Error handling toast can be done via SideEffect or Event flow in production,
+            // but for simplicity, we let the UI observe state or keep it clean here.
+        }
+    }
+    
+    fun cancelDownload() {
+        isDownloadCancelled = true
+        _state.update { it.copy(isDownloading = false, downloadingFileName = null, downloadProgress = null) }
     }
 
     /**

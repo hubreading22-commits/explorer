@@ -16,9 +16,20 @@ import android.content.pm.PackageManager
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.work.WorkManager
-import kotlinx.coroutines.launch
+import androidx.activity.viewModels
+import com.collegefiles.app.ui.sync.ShareReceiverViewModel
+import android.content.Intent
+import android.net.Uri
 
 class MainActivity : ComponentActivity() {
+    private val shareReceiverViewModel: ShareReceiverViewModel by viewModels {
+        object : androidx.lifecycle.ViewModelProvider.Factory {
+            override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+                return ShareReceiverViewModel() as T
+            }
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         // Initialize App Policy & Credential Store & Upload Manager
@@ -52,7 +63,29 @@ class MainActivity : ComponentActivity() {
                     color = MaterialTheme.colorScheme.background
                 ) {
                     AppNavigation()
+                    com.collegefiles.app.ui.sync.ShareReceiverDialogLayer(viewModel = shareReceiverViewModel)
                 }
+            }
+        }
+        
+        handleIntent(intent)
+    }
+    
+    override fun onNewIntent(intent: Intent?) {
+        super.onNewIntent(intent)
+        intent?.let { handleIntent(it) }
+    }
+    
+    private fun handleIntent(intent: Intent) {
+        if (intent.action == Intent.ACTION_SEND) {
+            val uri = intent.getParcelableExtra<Uri>(Intent.EXTRA_STREAM)
+            if (uri != null) {
+                shareReceiverViewModel.handleSharedUris(listOf(uri))
+            }
+        } else if (intent.action == Intent.ACTION_SEND_MULTIPLE) {
+            val uris = intent.getParcelableArrayListExtra<Uri>(Intent.EXTRA_STREAM)
+            if (uris != null) {
+                shareReceiverViewModel.handleSharedUris(uris)
             }
         }
     }

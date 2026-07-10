@@ -26,12 +26,21 @@ class DocumentSessionService(
     private val debounceJobs = mutableMapOf<UUID, Job>()
     private val pollingJobs = mutableMapOf<UUID, Job>()
 
-    suspend fun openDocument(shareName: String, path: String, fileItem: FileItem): Result<Unit> {
+    suspend fun openDocument(
+        shareName: String, 
+        path: String, 
+        fileItem: FileItem,
+        onProgress: (Float) -> Unit = {},
+        cancelSignal: () -> Boolean = { false }
+    ): Result<Unit> {
         return try {
             val cacheDir = File(context.cacheDir, "sync_docs").apply { mkdirs() }
-            val localFile = File(cacheDir, fileItem.name)
+            val sessionId = UUID.randomUUID()
+            val shortSessionId = sessionId.toString().substring(0, 8)
+            val localFile = File(cacheDir, "${shortSessionId}_${fileItem.name}")
 
             val session = DocumentSession(
+                sessionId = sessionId,
                 shareName = shareName,
                 remotePath = fileItem.path,
                 localFile = localFile
@@ -50,10 +59,29 @@ class DocumentSessionService(
             }
 
             val fileStream = (result as SmbResult.Success).data
+            val expectedSize = fileItem.size
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
                 fileStream.inputStream().use { input ->
                     java.io.FileOutputStream(localFile).use { output ->
-                        input.copyTo(output)
+                        val buffer = ByteArray(1048576) // 1MB buffer
+                        var bytesRead: Int
+                        var totalTransferred = 0L
+                        
+                        while (isActive && !cancelSignal()) {
+                            bytesRead = input.read(buffer)
+                            if (bytesRead < 0) break
+                            output.write(buffer, 0, bytesRead)
+                            totalTransferred += bytesRead
+                            
+                            if (expectedSize > 0) {
+                                val pct = (totalTransferred.toFloat() / expectedSize)
+                                onProgress(pct.coerceIn(0f, 1f))
+                            }
+                        }
+                        
+                        if (cancelSignal() || !isActive) {
+                            throw CancellationException("Download cancelled")
+                        }
                     }
                 }
                 fileStream.close()

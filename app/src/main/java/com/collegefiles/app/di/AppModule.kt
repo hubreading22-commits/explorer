@@ -26,6 +26,9 @@ object AppModule {
     val documentSessionRepository = com.collegefiles.app.sync.DocumentSessionRepository()
     lateinit var documentSessionService: com.collegefiles.app.sync.DocumentSessionService
         private set
+        
+    lateinit var shareImportManager: com.collegefiles.app.sync.ShareImportManager
+        private set
 
     fun initialize(context: android.content.Context) {
         documentSessionService = com.collegefiles.app.sync.DocumentSessionService(
@@ -33,6 +36,11 @@ object AppModule {
             repository = documentSessionRepository,
             smbClient = smbClient,
             uploadManager = uploadManager
+        )
+        
+        shareImportManager = com.collegefiles.app.sync.ShareImportManager(
+            context = context,
+            repository = documentSessionRepository
         )
     }
 }

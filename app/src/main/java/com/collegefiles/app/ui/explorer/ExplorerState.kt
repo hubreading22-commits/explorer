@@ -11,6 +11,10 @@ data class ExplorerState(
     val connectionState: ConnectionState = ConnectionState.Connecting,
     val error: String? = null,
     
+    val isDownloading: Boolean = false,
+    val downloadingFileName: String? = null,
+    val downloadProgress: Float? = null,
+    
     // Future-proofing
     val selectionMode: Boolean = false,
     val selectedItems: Set<String> = emptySet()

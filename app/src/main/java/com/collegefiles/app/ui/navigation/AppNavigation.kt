@@ -102,21 +102,7 @@ fun AppNavigation() {
                     val editableExts = listOf("doc", "docx", "xls", "xlsx", "ppt", "pptx", "txt")
                     
                     if (ext in editableExts) {
-                        // Let the service download and open in an external editor via FileProvider
-                        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main).launch {
-                            val result = AppModule.documentSessionService.openDocument(
-                                shareName = explorerViewModel.state.value.currentShare,
-                                path = explorerViewModel.state.value.breadcrumbs.joinToString("\\"),
-                                fileItem = file
-                            )
-                            if (result.isFailure) {
-                                android.widget.Toast.makeText(
-                                    context,
-                                    "Failed to open document: ${result.exceptionOrNull()?.message}",
-                                    android.widget.Toast.LENGTH_LONG
-                                ).show()
-                            }
-                        }
+                        explorerViewModel.openDocument(file)
                     } else {
                         // Open internally
                         viewerViewModel.selectFile(file, explorerViewModel.state.value.currentShare)

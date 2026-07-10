@@ -306,6 +306,13 @@ fun ExplorerScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
+            if (state.isDownloading && state.downloadingFileName != null) {
+                DownloadProgressBanner(
+                    fileName = state.downloadingFileName!!,
+                    progress = state.downloadProgress,
+                    onCancel = { viewModel.cancelDownload() }
+                )
+            }
             UploadProgressBanner(uploads)
             Box(modifier = Modifier.weight(1f)) {
                 when {
@@ -343,6 +350,65 @@ fun ExplorerScreen(
                     }
                 }
             }
+        }
+}
+
+@Composable
+fun DownloadProgressBanner(fileName: String, progress: Float?, onCancel: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.tertiaryContainer)
+            .padding(16.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Opening $fileName...",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onTertiaryContainer,
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                )
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (progress != null) {
+                    Text(
+                        text = "${(progress * 100).toInt()}%",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onTertiaryContainer
+                    )
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                IconButton(onClick = onCancel, modifier = Modifier.size(24.dp)) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Cancel",
+                        tint = MaterialTheme.colorScheme.onTertiaryContainer
+                    )
+                }
+            }
+        }
+        if (progress != null) {
+            LinearProgressIndicator(
+                progress = progress,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp),
+                color = MaterialTheme.colorScheme.onTertiaryContainer
+            )
+        } else {
+            LinearProgressIndicator(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp),
+                color = MaterialTheme.colorScheme.onTertiaryContainer
+            )
         }
     }
 }
