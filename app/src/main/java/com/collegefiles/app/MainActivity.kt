@@ -40,7 +40,9 @@ class MainActivity : ComponentActivity() {
         AppModule.initialize(applicationContext)
         
         // COLD BOOT DETECTION: Wipe credentials if the app was swiped away (fresh launch)
-        if (savedInstanceState == null) {
+        // EXCEPT if the app was launched specifically to handle an incoming share.
+        val isShareIntent = intent?.action == Intent.ACTION_SEND || intent?.action == Intent.ACTION_SEND_MULTIPLE
+        if (savedInstanceState == null && !isShareIntent) {
             AppModule.credentialStore.clear()
             WorkManager.getInstance(this).cancelAllWork()
             

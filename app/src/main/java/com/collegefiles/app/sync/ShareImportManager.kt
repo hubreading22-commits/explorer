@@ -25,7 +25,7 @@ class ShareImportManager(
         
         for (session in activeSessions) {
             val shortId = session.sessionId.toString().substring(0, 8)
-            if (fileName.startsWith(shortId)) {
+            if (fileName.contains(shortId, ignoreCase = true)) {
                 return ShareResolveResult.MatchFound(session)
             }
         }
