@@ -75,7 +75,7 @@ fun LoginScreen(
                 Spacer(modifier = Modifier.height(16.dp))
                 
                 Text(
-                    text = "College Files",
+                    text = "Truenas",
                     style = MaterialTheme.typography.headlineMedium,
                     color = MaterialTheme.colorScheme.onSurface
                 )

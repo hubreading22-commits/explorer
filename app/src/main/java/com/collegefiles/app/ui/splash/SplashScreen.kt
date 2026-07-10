@@ -25,7 +25,7 @@ fun SplashScreen(onSplashFinished: () -> Unit) {
         contentAlignment = Alignment.Center
     ) {
         Text(
-            text = "College Files",
+            text = "Truenas",
             style = MaterialTheme.typography.displayMedium,
             color = MaterialTheme.colorScheme.primary
         )
