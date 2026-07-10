@@ -58,8 +58,11 @@ class UploadWorker(
         var result: Result = Result.success()
         val inputStream = context.contentResolver.openInputStream(uri) ?: return Result.failure()
 
+        // Isolate the SMBClient so background bulk uploads don't flood the UI's socket
+        val uploadSmbClient = com.smbcore.SmbClient.create(AppModule.smbConfig, AppModule.credentialStore)
+
         try {
-            AppModule.smbClient.upload(
+            uploadSmbClient.upload(
                 input = inputStream,
                 shareName = shareName,
                 remotePath = remotePath,
