@@ -217,7 +217,7 @@ fun ExplorerScreen(
                     else -> {
                         LazyColumn(
                             state = listState,
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier.fillMaxSize()
                         ) {
                             items(state.files, key = { it.path }) { file ->
                                 FileItemRow(
