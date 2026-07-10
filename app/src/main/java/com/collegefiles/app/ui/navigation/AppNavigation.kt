@@ -5,6 +5,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
+import kotlinx.coroutines.launch
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -101,7 +102,7 @@ fun AppNavigation() {
                     
                     if (ext in editableExts) {
                         // Let the service download and open in an external editor via FileProvider
-                        kotlinx.coroutines.GlobalScope.launch(kotlinx.coroutines.Dispatchers.Main) {
+                        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main).launch {
                             AppModule.documentSessionService.openDocument(
                                 shareName = explorerViewModel.state.value.currentShare,
                                 path = explorerViewModel.state.value.breadcrumbs.joinToString("\\"),

@@ -39,18 +39,21 @@ class DocumentSessionService(
             repository.addSession(session)
             repository.updateSession(session.sessionId) { it.copy(state = SessionState.PREPARING) }
 
-            val result = smbClient.download(
-                shareName = shareName,
-                remotePath = session.remotePath,
-                output = FileOutputStream(localFile),
-                expectedSize = fileItem.size,
-                onProgress = {},
-                onStateChange = {}
-            )
+            val result = smbClient.openFile(shareName, session.remotePath)
 
             if (result is SmbResult.Failure) {
                 repository.updateSession(session.sessionId) { it.copy(state = SessionState.FAILED, error = result.error.toString()) }
                 return Result.failure(Exception("Download failed: ${result.error}"))
+            }
+
+            val fileStream = (result as SmbResult.Success).data
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                fileStream.inputStream.use { input ->
+                    java.io.FileOutputStream(localFile).use { output ->
+                        input.copyTo(output)
+                    }
+                }
+                fileStream.close()
             }
 
             repository.updateSession(session.sessionId) { it.copy(state = SessionState.CACHED) }
