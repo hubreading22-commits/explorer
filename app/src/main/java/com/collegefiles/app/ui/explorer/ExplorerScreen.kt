@@ -329,8 +329,9 @@ fun ExplorerScreen(
                 PendingUploadBanner(
                     fileName = fileName,
                     onSaveHere = {
-                        val fullRemotePath = if (state.currentPath.isEmpty()) fileName else "${state.currentPath}\\$fileName"
-                        com.collegefiles.app.di.AppModule.uploadManager.enqueueUpload(uri, shareName, fullRemotePath)
+                        val currentPath = state.breadcrumbs.joinToString("\\")
+                        val fullRemotePath = if (currentPath.isEmpty()) fileName else "$currentPath\\$fileName"
+                        com.collegefiles.app.di.AppModule.uploadManager.enqueueUpload(uri, state.currentShare, fullRemotePath)
                         com.collegefiles.app.di.AppModule.pendingUploads.value = null
                     },
                     onCancel = {
