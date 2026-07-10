@@ -5,27 +5,56 @@ import com.smbcore.io.FileStream
 import java.io.InputStream
 
 internal class SmbFileStreamImpl(
-    private val smbFile: File,
-    private val fileSize: Long
+    private var smbFile: File,
+    private val fileSize: Long,
+    private val reopener: (() -> File)? = null
 ) : FileStream {
 
-    private val inputStream: InputStream = smbFile.inputStream
+    private var inputStream: InputStream = smbFile.inputStream
     private var currentPosition: Long = 0
 
     override fun read(buffer: ByteArray): Int {
-        val bytesRead = inputStream.read(buffer)
-        if (bytesRead > 0) {
-            currentPosition += bytesRead
+        return try {
+            val bytesRead = inputStream.read(buffer)
+            if (bytesRead > 0) {
+                currentPosition += bytesRead
+            }
+            bytesRead
+        } catch (e: java.io.IOException) {
+            if (reopener == null) throw e
+            try {
+                // Attempt to reopen the stream
+                smbFile = reopener.invoke()
+                inputStream = smbFile.inputStream
+                if (currentPosition > 0) {
+                    val skipped = inputStream.skip(currentPosition)
+                    if (skipped != currentPosition) throw java.io.IOException("Failed to seek after reconnect")
+                }
+                // Retry read once
+                val bytesRead = inputStream.read(buffer)
+                if (bytesRead > 0) {
+                    currentPosition += bytesRead
+                }
+                bytesRead
+            } catch (reconnectEx: Exception) {
+                throw java.io.IOException("Failed to read and reconnect", reconnectEx)
+            }
         }
-        return bytesRead
     }
 
     override fun seek(position: Long) {
-        // SMBJ InputStream doesn't natively support full seek without reopening or skip.
-        // A robust implementation would recreate the stream with an offset.
-        // For now, we skip forward if possible, or throw if seeking backwards.
         if (position < currentPosition) {
-            throw UnsupportedOperationException("Backward seeking requires reopening the SMB stream (not implemented in this stub).")
+            if (reopener != null) {
+                try {
+                    smbFile = reopener.invoke()
+                    inputStream = smbFile.inputStream
+                    currentPosition = 0
+                } catch (e: Exception) {
+                    throw UnsupportedOperationException("Failed to reopen stream for backward seek", e)
+                }
+            } else {
+                throw UnsupportedOperationException("Backward seeking requires reopening the SMB stream.")
+            }
         }
         val bytesToSkip = position - currentPosition
         if (bytesToSkip > 0) {

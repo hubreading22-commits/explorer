@@ -14,6 +14,8 @@ interface SmbClient {
     fun logout(): SmbResult<Unit>
     fun isConnected(): Boolean
     
+    val connectionState: kotlinx.coroutines.flow.StateFlow<ConnectionState>
+    
     fun listShares(): SmbResult<List<Share>>
     fun listDirectory(shareName: String, path: String): SmbResult<List<FileItem>>
     
@@ -42,6 +44,9 @@ internal class SmbClientImpl(
     private val shareService = ShareServiceImpl(connectionManager)
     private val directoryService = DirectoryServiceImpl(connectionManager)
     private val fileService = FileServiceImpl(connectionManager, config)
+
+    override val connectionState: kotlinx.coroutines.flow.StateFlow<ConnectionState>
+        get() = connectionManager.connectionState
 
     override fun login(credentials: Credentials): SmbResult<User> {
         return connectionManager.login(credentials)

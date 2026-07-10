@@ -10,6 +10,14 @@ enum class FileType {
     FOLDER, PDF, IMAGE, VIDEO, AUDIO, WORD, EXCEL, POWERPOINT, ZIP, TEXT, OFFICE, UNKNOWN
 }
 
+enum class ConnectionState {
+    DISCONNECTED,
+    CONNECTING,
+    CONNECTED,
+    RECOVERING,
+    UNAUTHENTICATED
+}
+
 data class FileItem(
     val path: String,
     val name: String,
