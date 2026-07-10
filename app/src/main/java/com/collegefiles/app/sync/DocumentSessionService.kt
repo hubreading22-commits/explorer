@@ -33,7 +33,7 @@ class DocumentSessionService(
 
             val session = DocumentSession(
                 shareName = shareName,
-                remotePath = if (path.isEmpty()) fileItem.name else "$path\\${fileItem.name}",
+                remotePath = fileItem.path,
                 localFile = localFile
             )
 

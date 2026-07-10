@@ -80,6 +80,7 @@ fun AppNavigation() {
         composable("explorer/{shareName}") { backStackEntry ->
             val shareName = backStackEntry.arguments?.getString("shareName") ?: ""
             val explorerViewModel = remember(shareName) { ExplorerViewModel(shareName) }
+            val context = LocalContext.current
 
             ExplorerScreen(
                 viewModel = explorerViewModel,
@@ -103,11 +104,18 @@ fun AppNavigation() {
                     if (ext in editableExts) {
                         // Let the service download and open in an external editor via FileProvider
                         kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main).launch {
-                            AppModule.documentSessionService.openDocument(
+                            val result = AppModule.documentSessionService.openDocument(
                                 shareName = explorerViewModel.state.value.currentShare,
                                 path = explorerViewModel.state.value.breadcrumbs.joinToString("\\"),
                                 fileItem = file
                             )
+                            if (result.isFailure) {
+                                android.widget.Toast.makeText(
+                                    context,
+                                    "Failed to open document: ${result.exceptionOrNull()?.message}",
+                                    android.widget.Toast.LENGTH_LONG
+                                ).show()
+                            }
                         }
                     } else {
                         // Open internally
