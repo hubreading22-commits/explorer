@@ -6,7 +6,7 @@ import java.io.File
 import java.io.FileInputStream
 import java.util.Properties
 
-fun main() {
+fun main() = kotlinx.coroutines.runBlocking {
     println("==============================")
     println("SMB SDK Architecture Test")
     println("==============================")
@@ -14,7 +14,7 @@ fun main() {
     val configFile = File("config.properties")
     if (!configFile.exists()) {
         println("Error: config.properties not found.")
-        return
+        return@runBlocking
     }
 
     val props = Properties()
@@ -27,7 +27,7 @@ fun main() {
 
     if (server.isNullOrBlank() || username.isNullOrBlank()) {
         println("Error: server and username must be provided in config.properties")
-        return
+        return@runBlocking
     }
 
     val config = SmbConfig(
@@ -47,7 +47,7 @@ fun main() {
     when (val loginResult = smb.login(creds)) {
         is SmbResult.Failure -> {
             println("Login Failed: ${loginResult.error}")
-            return
+            return@runBlocking
         }
         is SmbResult.Success -> {
             println("✓ Logged in successfully. Current User: ${loginResult.data.username}")
