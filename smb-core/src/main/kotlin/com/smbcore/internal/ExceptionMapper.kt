@@ -7,7 +7,7 @@ import java.net.SocketException
 import com.hierynomus.mssmb2.SMBApiException
 
 internal object ExceptionMapper {
-    fun <T> map(e: Throwable, defaultMessage: String): SmbResult.Failure {
+    fun map(e: Throwable, defaultMessage: String): SmbResult.Failure {
         return when (e) {
             is SMBApiException -> {
                 when {

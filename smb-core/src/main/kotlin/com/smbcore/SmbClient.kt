@@ -16,18 +16,18 @@ interface SmbClient {
     
     val connectionState: kotlinx.coroutines.flow.StateFlow<ConnectionState>
     
-    fun listShares(): SmbResult<List<Share>>
-    fun listDirectory(shareName: String, path: String): SmbResult<List<FileItem>>
+    suspend fun listShares(): SmbResult<List<Share>>
+    suspend fun listDirectory(shareName: String, path: String): SmbResult<List<FileItem>>
     
-    fun getMetadata(shareName: String, path: String): SmbResult<FileMetadata>
-    fun openFile(shareName: String, path: String): SmbResult<FileStream>
+    suspend fun getMetadata(shareName: String, path: String): SmbResult<FileMetadata>
+    suspend fun openFile(shareName: String, path: String): SmbResult<FileStream>
     
-    fun upload(input: InputStream, shareName: String, remotePath: String): SmbResult<Unit>
-    fun delete(shareName: String, path: String): SmbResult<Unit>
-    fun rename(shareName: String, oldPath: String, newName: String): SmbResult<Unit>
-    fun copy(sourceShare: String, sourcePath: String, destShare: String, destPath: String): SmbResult<Unit>
-    fun move(sourceShare: String, sourcePath: String, destShare: String, destPath: String): SmbResult<Unit>
-    fun createFolder(shareName: String, path: String): SmbResult<Unit>
+    suspend fun upload(input: InputStream, shareName: String, remotePath: String): SmbResult<Unit>
+    suspend fun delete(shareName: String, path: String): SmbResult<Unit>
+    suspend fun rename(shareName: String, oldPath: String, newName: String): SmbResult<Unit>
+    suspend fun copy(sourceShare: String, sourcePath: String, destShare: String, destPath: String): SmbResult<Unit>
+    suspend fun move(sourceShare: String, sourcePath: String, destShare: String, destPath: String): SmbResult<Unit>
+    suspend fun createFolder(shareName: String, path: String): SmbResult<Unit>
     
     companion object {
         fun create(config: SmbConfig): SmbClient {
@@ -60,43 +60,43 @@ internal class SmbClientImpl(
         return connectionManager.isConnected()
     }
 
-    override fun listShares(): SmbResult<List<Share>> {
+    override suspend fun listShares(): SmbResult<List<Share>> {
         return shareService.listShares()
     }
 
-    override fun listDirectory(shareName: String, path: String): SmbResult<List<FileItem>> {
+    override suspend fun listDirectory(shareName: String, path: String): SmbResult<List<FileItem>> {
         return directoryService.listDirectory(shareName, path)
     }
 
-    override fun getMetadata(shareName: String, path: String): SmbResult<FileMetadata> {
+    override suspend fun getMetadata(shareName: String, path: String): SmbResult<FileMetadata> {
         return fileService.getMetadata(shareName, path)
     }
 
-    override fun openFile(shareName: String, path: String): SmbResult<FileStream> {
+    override suspend fun openFile(shareName: String, path: String): SmbResult<FileStream> {
         return fileService.openFile(shareName, path)
     }
 
-    override fun upload(input: InputStream, shareName: String, remotePath: String): SmbResult<Unit> {
+    override suspend fun upload(input: InputStream, shareName: String, remotePath: String): SmbResult<Unit> {
         return fileService.upload(input, shareName, remotePath)
     }
 
-    override fun delete(shareName: String, path: String): SmbResult<Unit> {
+    override suspend fun delete(shareName: String, path: String): SmbResult<Unit> {
         return fileService.delete(shareName, path)
     }
 
-    override fun rename(shareName: String, oldPath: String, newName: String): SmbResult<Unit> {
+    override suspend fun rename(shareName: String, oldPath: String, newName: String): SmbResult<Unit> {
         return fileService.rename(shareName, oldPath, newName)
     }
 
-    override fun copy(sourceShare: String, sourcePath: String, destShare: String, destPath: String): SmbResult<Unit> {
+    override suspend fun copy(sourceShare: String, sourcePath: String, destShare: String, destPath: String): SmbResult<Unit> {
         return fileService.copy(sourceShare, sourcePath, destShare, destPath)
     }
 
-    override fun move(sourceShare: String, sourcePath: String, destShare: String, destPath: String): SmbResult<Unit> {
+    override suspend fun move(sourceShare: String, sourcePath: String, destShare: String, destPath: String): SmbResult<Unit> {
         return fileService.move(sourceShare, sourcePath, destShare, destPath)
     }
 
-    override fun createFolder(shareName: String, path: String): SmbResult<Unit> {
+    override suspend fun createFolder(shareName: String, path: String): SmbResult<Unit> {
         return fileService.createFolder(shareName, path)
     }
 }
