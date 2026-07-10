@@ -472,6 +472,8 @@ fun UploadProgressBanner(workInfos: List<androidx.work.WorkInfo>) {
     val activeUploads = workInfos.filter { !it.state.isFinished }
     if (activeUploads.isEmpty()) return
 
+    val context = LocalContext.current
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -522,6 +524,17 @@ fun UploadProgressBanner(workInfos: List<androidx.work.WorkInfo>) {
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                IconButton(
+                    onClick = { androidx.work.WorkManager.getInstance(context).cancelWorkById(workInfo.id) }, 
+                    modifier = Modifier.size(24.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Cancel",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
             LinearProgressIndicator(
