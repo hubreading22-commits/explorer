@@ -7,7 +7,7 @@ import com.smbcore.config.SmbConfig
 object AppModule {
     val smbConfig = SmbConfig(
         serverIP = "192.168.1.50",
-        bufferSize = 4096,
+        bufferSize = 1048576, // 1MB buffer for much faster transfer speeds
         connectTimeout = 10000,
         readTimeout = 10000,
         writeTimeout = 10000
