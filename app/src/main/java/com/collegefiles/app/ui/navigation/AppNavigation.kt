@@ -8,6 +8,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.collegefiles.app.di.AppModule
 import com.collegefiles.app.ui.explorer.ExplorerScreen
 import com.collegefiles.app.ui.explorer.ExplorerViewModel
 import com.collegefiles.app.ui.explorer.FileOpsViewModel
