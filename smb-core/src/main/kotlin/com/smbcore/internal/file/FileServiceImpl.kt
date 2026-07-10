@@ -216,7 +216,7 @@ internal class FileServiceImpl(
                 SMB2CreateDisposition.FILE_OPEN,
                 null
             )
-            renameFile.rename(remotePath)
+            renameFile.rename(remotePath, true)
             renameFile.close()
             onStateChange(UploadState.Completed)
         }
