@@ -22,7 +22,14 @@ interface SmbClient {
     suspend fun getMetadata(shareName: String, path: String): SmbResult<FileMetadata>
     suspend fun openFile(shareName: String, path: String): SmbResult<FileStream>
     
-    suspend fun upload(input: InputStream, shareName: String, remotePath: String): SmbResult<Unit>
+    suspend fun upload(
+        input: InputStream, 
+        shareName: String, 
+        remotePath: String, 
+        expectedSize: Long,
+        onProgress: suspend (UploadProgress) -> Unit,
+        onStateChange: suspend (UploadState) -> Unit
+    ): SmbResult<Unit>
     suspend fun delete(shareName: String, path: String): SmbResult<Unit>
     suspend fun rename(shareName: String, oldPath: String, newName: String): SmbResult<Unit>
     suspend fun copy(sourceShare: String, sourcePath: String, destShare: String, destPath: String): SmbResult<Unit>
@@ -77,8 +84,15 @@ internal class SmbClientImpl(
         return fileService.openFile(shareName, path)
     }
 
-    override suspend fun upload(input: InputStream, shareName: String, remotePath: String): SmbResult<Unit> {
-        return fileService.upload(input, shareName, remotePath)
+    override suspend fun upload(
+        input: InputStream, 
+        shareName: String, 
+        remotePath: String, 
+        expectedSize: Long,
+        onProgress: suspend (UploadProgress) -> Unit,
+        onStateChange: suspend (UploadState) -> Unit
+    ): SmbResult<Unit> {
+        return fileService.upload(input, shareName, remotePath, expectedSize, onProgress, onStateChange)
     }
 
     override suspend fun delete(shareName: String, path: String): SmbResult<Unit> {

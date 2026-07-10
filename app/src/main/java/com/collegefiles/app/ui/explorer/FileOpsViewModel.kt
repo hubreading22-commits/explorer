@@ -13,7 +13,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.io.InputStream
+import android.net.Uri
 
 class FileOpsViewModel(
     private val smbClient: SmbClient = AppModule.smbClient
@@ -132,24 +132,11 @@ class FileOpsViewModel(
         }
     }
 
-    fun upload(shareName: String, remotePath: String, inputStream: InputStream, fileName: String, onSuccess: () -> Unit) {
-        _state.update { it.copy(isLoading = true) }
-
-        viewModelScope.launch {
-            val fullRemotePath = if (remotePath.isEmpty()) fileName else "$remotePath\\$fileName"
-            val result = withContext(Dispatchers.IO) {
-                smbClient.upload(inputStream, shareName, fullRemotePath)
-            }
-            when (result) {
-                is SmbResult.Success -> {
-                    _state.update { it.copy(isLoading = false, successMessage = "Upload complete") }
-                    onSuccess()
-                }
-                is SmbResult.Failure -> {
-                    _state.update { it.copy(isLoading = false, error = "Upload failed. Check connection.") }
-                }
-            }
-        }
+    fun upload(uri: Uri, shareName: String, remotePath: String, fileName: String, onSuccess: () -> Unit) {
+        val fullRemotePath = if (remotePath.isEmpty()) fileName else "$remotePath\\$fileName"
+        AppModule.uploadManager.enqueueUpload(uri, shareName, fullRemotePath)
+        _state.update { it.copy(successMessage = "Upload started in background") }
+        onSuccess()
     }
 
     // ─── Clipboard ───────────────────────────────────────────────────────────────

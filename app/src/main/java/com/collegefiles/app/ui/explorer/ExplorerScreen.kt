@@ -57,28 +57,17 @@ fun ExplorerScreen(
     val filePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         uri?.let {
             val fileName = getFileName(context, uri)
-            val inputStream = context.contentResolver.openInputStream(uri)
-            if (inputStream != null) {
-                // Log stream availability to debug 0-byte issue
-                try {
-                    val availableBytes = inputStream.available()
-                    android.util.Log.d("UploadDebug", "Stream opened for $fileName, available bytes: $availableBytes")
-                } catch (e: Exception) {
-                    android.util.Log.e("UploadDebug", "Failed to check available bytes for $fileName", e)
-                }
-
-                fileOpsViewModel.upload(
-                    shareName = state.currentShare,
-                    remotePath = state.breadcrumbs.joinToString("\\"),
-                    inputStream = inputStream,
-                    fileName = fileName,
-                    onSuccess = { viewModel.refresh() }
-                )
-            } else {
-                android.util.Log.e("UploadDebug", "Failed to open input stream for $fileName")
-            }
+            fileOpsViewModel.upload(
+                uri = uri,
+                shareName = state.currentShare,
+                remotePath = state.breadcrumbs.joinToString("\\"),
+                fileName = fileName,
+                onSuccess = { viewModel.refresh() }
+            )
         }
     }
+    
+    val uploads by AppModule.uploadManager.observeUploads().collectAsState(initial = emptyList())
 
     LaunchedEffect(opsState.successMessage) {
         opsState.successMessage?.let {
@@ -224,29 +213,81 @@ fun ExplorerScreen(
                     ExplorerEmptyState()
                 }
                 else -> {
-                    LazyColumn(
-                        state = listState,
-                        modifier = Modifier.fillMaxSize()
-                    ) {
-                        items(state.files, key = { it.path }) { file ->
-                            FileItemRow(
-                                item = file,
-                                onClick = {
-                                    if (file.isDirectory) {
-                                        viewModel.onFolderClick(file)
-                                    } else {
-                                        onFileClick(file) // Delegate to router in AppNavigation
+                    Column(modifier = Modifier.fillMaxSize()) {
+                        UploadProgressBanner(uploads)
+                        LazyColumn(
+                            state = listState,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            items(state.files, key = { it.path }) { file ->
+                                FileItemRow(
+                                    item = file,
+                                    onClick = {
+                                        if (file.isDirectory) {
+                                            viewModel.onFolderClick(file)
+                                        } else {
+                                            onFileClick(file) // Delegate to router in AppNavigation
+                                        }
+                                    },
+                                    onLongClick = {
+                                        fileOpsViewModel.onLongPress(file)
                                     }
-                                },
-                                onLongClick = {
-                                    fileOpsViewModel.onLongPress(file)
-                                }
-                            )
-                            Divider(modifier = Modifier.padding(start = 72.dp)) // ChromeOS style offset divider
+                                )
+                                Divider(modifier = Modifier.padding(start = 72.dp)) // ChromeOS style offset divider
+                            }
                         }
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+fun UploadProgressBanner(workInfos: List<androidx.work.WorkInfo>) {
+    val activeUploads = workInfos.filter { !it.state.isFinished }
+    if (activeUploads.isEmpty()) return
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .padding(16.dp)
+    ) {
+        activeUploads.forEachIndexed { index, workInfo ->
+            if (index > 0) Spacer(modifier = Modifier.height(16.dp))
+            val progress = workInfo.progress
+            val stateStr = progress.getString("state") ?: "Preparing"
+            val pct = progress.getFloat("percentage", 0f)
+            val speed = progress.getLong("speedBytesPerSecond", 0L)
+            
+            val speedMb = speed / 1024f / 1024f
+            
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text(
+                    text = "Uploading... $stateStr", 
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = "${pct.toInt()}%", 
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            if (speed > 0) {
+                Text(
+                    text = String.format("%.2f MB/s", speedMb), 
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            LinearProgressIndicator(
+                progress = pct / 100f, 
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp)
+            )
         }
     }
 }

@@ -14,6 +14,7 @@ object AppModule {
     )
 
     lateinit var credentialStore: com.smbcore.model.CredentialStore
+    lateinit var uploadManager: com.collegefiles.app.upload.UploadManager
     
     val smbClient: SmbClient by lazy {
         SmbClient.create(smbConfig, credentialStore)

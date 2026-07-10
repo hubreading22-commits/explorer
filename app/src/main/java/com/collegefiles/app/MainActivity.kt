@@ -14,9 +14,10 @@ import com.collegefiles.app.ui.navigation.AppNavigation
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // Initialize App Policy & Credential Store
+        // Initialize App Policy & Credential Store & Upload Manager
         AppModule.contentPolicy = ContentPolicy(applicationContext)
         AppModule.credentialStore = com.collegefiles.app.config.AndroidCredentialStore(applicationContext)
+        AppModule.uploadManager = com.collegefiles.app.upload.UploadManager(applicationContext)
         
         // COLD BOOT DETECTION: Wipe credentials if the app was swiped away (fresh launch)
         if (savedInstanceState == null) {
