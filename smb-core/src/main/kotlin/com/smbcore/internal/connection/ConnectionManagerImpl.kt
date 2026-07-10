@@ -132,12 +132,12 @@ internal class ConnectionManagerImpl(private val config: SmbConfig) {
 
         return mutex.withLock {
             // Check again inside lock
-            if (isConnected()) return SmbResult.Success(Unit)
+            if (isConnected()) return@withLock SmbResult.Success(Unit)
 
             val cache = credentialCache
             if (cache == null || cache.isCleared) {
                 _connectionState.value = ConnectionState.UNAUTHENTICATED
-                return SmbResult.Failure(SmbError.AuthenticationFailed)
+                return@withLock SmbResult.Failure(SmbError.AuthenticationFailed)
             }
 
             _connectionState.value = ConnectionState.RECOVERING
@@ -165,13 +165,13 @@ internal class ConnectionManagerImpl(private val config: SmbConfig) {
                     this.session = sess
                     
                     _connectionState.value = ConnectionState.CONNECTED
-                    return SmbResult.Success(Unit)
+                    return@withLock SmbResult.Success(Unit)
                 } catch (e: com.hierynomus.mssmb2.SMBApiException) {
                     if (e.status.name.contains("LOGON_FAILURE") || e.status.name.contains("ACCESS_DENIED")) {
                         credentialCache?.clear()
                         credentialCache = null
                         _connectionState.value = ConnectionState.UNAUTHENTICATED
-                        return SmbResult.Failure(SmbError.AuthenticationFailed)
+                        return@withLock SmbResult.Failure(SmbError.AuthenticationFailed)
                     }
                     lastError = SmbResult.Failure(SmbError.Unknown(e.message ?: "Unknown SMB Error"))
                 } catch (e: java.io.IOException) {
@@ -184,7 +184,7 @@ internal class ConnectionManagerImpl(private val config: SmbConfig) {
             }
             
             _connectionState.value = ConnectionState.DISCONNECTED
-            return lastError ?: SmbResult.Failure(SmbError.NetworkUnavailable)
+            lastError ?: SmbResult.Failure(SmbError.NetworkUnavailable)
         }
     }
 }

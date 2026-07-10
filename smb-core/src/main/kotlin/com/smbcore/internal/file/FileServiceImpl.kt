@@ -21,7 +21,7 @@ internal class FileServiceImpl(
     private val connectionManager: ConnectionManagerImpl,
     private val config: SmbConfig
 ) {
-    private suspend fun <T> withShare(shareName: String, block: (DiskShare) -> SmbResult<T>): SmbResult<T> {
+    private suspend fun <T> withShare(shareName: String, block: suspend (DiskShare) -> SmbResult<T>): SmbResult<T> {
         val connected = connectionManager.ensureConnected()
         if (connected is SmbResult.Failure) return connected
         val session = connectionManager.session ?: return SmbResult.Failure(SmbError.NetworkUnavailable)
