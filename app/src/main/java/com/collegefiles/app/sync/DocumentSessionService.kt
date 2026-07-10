@@ -9,6 +9,7 @@ import com.collegefiles.app.upload.UploadManager
 import com.smbcore.SmbClient
 import com.smbcore.model.FileItem
 import com.smbcore.model.SmbResult
+import com.smbcore.io.inputStream
 import kotlinx.coroutines.*
 import java.io.File
 import java.io.FileOutputStream
@@ -48,7 +49,7 @@ class DocumentSessionService(
 
             val fileStream = (result as SmbResult.Success).data
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                fileStream.inputStream.use { input ->
+                fileStream.inputStream().use { input ->
                     java.io.FileOutputStream(localFile).use { output ->
                         input.copyTo(output)
                     }
