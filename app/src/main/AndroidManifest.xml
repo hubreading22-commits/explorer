@@ -15,6 +15,7 @@
     <application
         android:allowBackup="true"
         android:label="Truenas"
+        android:icon="@mipmap/ic_launcher"
         android:supportsRtl="true"
         android:theme="@android:style/Theme.DeviceDefault.NoActionBar">
         <activity
