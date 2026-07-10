@@ -24,11 +24,17 @@ class MainActivity : ComponentActivity() {
         AppModule.contentPolicy = ContentPolicy(applicationContext)
         AppModule.credentialStore = com.collegefiles.app.config.AndroidCredentialStore(applicationContext)
         AppModule.uploadManager = com.collegefiles.app.upload.UploadManager(applicationContext)
+        AppModule.initialize(applicationContext)
         
         // COLD BOOT DETECTION: Wipe credentials if the app was swiped away (fresh launch)
         if (savedInstanceState == null) {
             AppModule.credentialStore.clear()
             WorkManager.getInstance(this).cancelAllWork()
+            
+            // Wipe sync cache on cold boot
+            kotlinx.coroutines.GlobalScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                AppModule.documentSessionService.clearAll()
+            }
         }
 
         // Request POST_NOTIFICATIONS permission for Android 13+ so upload notifications show

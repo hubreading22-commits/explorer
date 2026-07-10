@@ -96,8 +96,23 @@ fun AppNavigation() {
                     }
                 },
                 onFileClick = { file ->
-                    viewerViewModel.selectFile(file)
-                    navController.navigate("viewer")
+                    val ext = file.name.substringAfterLast('.').lowercase()
+                    val editableExts = listOf("doc", "docx", "xls", "xlsx", "ppt", "pptx", "txt")
+                    
+                    if (ext in editableExts) {
+                        // Let the service download and open in an external editor via FileProvider
+                        kotlinx.coroutines.GlobalScope.launch(kotlinx.coroutines.Dispatchers.Main) {
+                            AppModule.documentSessionService.openDocument(
+                                shareName = explorerViewModel.state.value.currentShare,
+                                path = explorerViewModel.state.value.breadcrumbs.joinToString("\\"),
+                                fileItem = file
+                            )
+                        }
+                    } else {
+                        // Open internally
+                        viewerViewModel.selectFile(file)
+                        navController.navigate("viewer")
+                    }
                 }
             )
         }

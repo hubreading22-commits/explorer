@@ -178,8 +178,12 @@ internal class FileServiceImpl(
             Thread.interrupted()
             
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO + kotlinx.coroutines.NonCancellable) {
-                try { file.close() } catch (_: Exception) {}
-                try { share.rm(tempPath) } catch (_: Exception) {}
+                try { file.close() } catch (ex: Exception) {
+                    android.util.Log.e("UploadCleanup", "Failed to close file", ex)
+                }
+                try { share.rm(tempPath) } catch (ex: Exception) {
+                    android.util.Log.e("UploadCleanup", "Failed to rm tempPath: $tempPath", ex)
+                }
             }
             
             if (e is kotlinx.coroutines.CancellationException) {

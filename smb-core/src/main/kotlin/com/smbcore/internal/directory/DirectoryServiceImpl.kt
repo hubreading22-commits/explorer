@@ -22,10 +22,20 @@ internal class DirectoryServiceImpl(private val connectionManager: ConnectionMan
                     ?: return SmbResult.Failure(SmbError.ShareNotFound)
 
                 val results = mutableListOf<FileItem>()
+                val now = System.currentTimeMillis()
                 for (f in share.list(path, "*")) {
-                    if (f.fileName != "." && f.fileName != ".." && !f.fileName.endsWith(".uploading")) {
-                        results.add(ModelMapper.mapToFileItem(path, f))
+                    if (f.fileName == "." || f.fileName == "..") continue
+                    
+                    if (f.fileName.endsWith(".uploading")) {
+                        val ageMs = now - f.changeTime.toEpochMillis()
+                        // If older than 24 hours, it's definitely an orphan.
+                        if (ageMs > 24 * 60 * 60 * 1000L) {
+                            try { share.rm(if (path.isEmpty()) f.fileName else "$path\\${f.fileName}") } catch (_: Exception) {}
+                        }
+                        continue // Hide it from UI anyway
                     }
+
+                    results.add(ModelMapper.mapToFileItem(path, f))
                 }
                 share.close()
                 return SmbResult.Success(results)

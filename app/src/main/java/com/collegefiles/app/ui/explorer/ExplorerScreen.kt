@@ -156,29 +156,66 @@ fun ExplorerScreen(
     }
 
     if (showLogoutDialog) {
-        val hasActiveUploads = uploads.any { !it.state.isFinished }
-        AlertDialog(
-            onDismissRequest = { showLogoutDialog = false },
-            title = { Text("Logout") },
-            text = { 
-                Text(if (hasActiveUploads) "You have active uploads running. Logging out will cancel them immediately. Are you sure you want to logout?" else "Are you sure you want to logout?") 
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        showLogoutDialog = false
-                        if (hasActiveUploads) {
-                            androidx.work.WorkManager.getInstance(context).cancelAllWork()
-                        }
-                        onLogout()
-                    },
-                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
-                ) { Text("Logout") }
-            },
-            dismissButton = {
-                TextButton(onClick = { showLogoutDialog = false }) { Text("Cancel") }
+        val activeUploads = uploads.filter { !it.state.isFinished }
+        val hasActiveUploads = activeUploads.isNotEmpty()
+        
+        val activeSessions by AppModule.documentSessionRepository.sessions.collectAsState(initial = emptyMap())
+        val hasActiveSessions = activeSessions.isNotEmpty()
+        
+        var isCancelling by remember { mutableStateOf(false) }
+
+        if (isCancelling) {
+            if (activeUploads.isEmpty()) {
+                LaunchedEffect(Unit) {
+                    showLogoutDialog = false
+                    isCancelling = false
+                    onLogout()
+                }
             }
-        )
+            AlertDialog(
+                onDismissRequest = { },
+                title = { Text("Logging out...") },
+                text = { 
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
+                        CircularProgressIndicator()
+                        Spacer(Modifier.height(16.dp))
+                        Text("Cancelling active uploads before logout...")
+                    }
+                },
+                confirmButton = {}
+            )
+        } else {
+            AlertDialog(
+                onDismissRequest = { showLogoutDialog = false },
+                title = { Text("Logout") },
+                text = { 
+                    if (hasActiveSessions) {
+                        Text("You have active document editing sessions. Unsaved changes may be lost if you logout now. Are you sure?")
+                    } else if (hasActiveUploads) {
+                        Text("You have active uploads running. Logging out will cancel them immediately. Are you sure you want to logout?") 
+                    } else {
+                        Text("Are you sure you want to logout?")
+                    }
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            if (hasActiveUploads) {
+                                isCancelling = true
+                                androidx.work.WorkManager.getInstance(context).cancelAllWork()
+                            } else {
+                                showLogoutDialog = false
+                                onLogout()
+                            }
+                        },
+                        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                    ) { Text("Logout") }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showLogoutDialog = false }) { Text("Cancel") }
+                }
+            )
+        }
     }
 
     Scaffold(
@@ -186,12 +223,10 @@ fun ExplorerScreen(
         topBar = {
             Column {
                 TopAppBar(
-                    title = { Text("Files") },
-                    actions = {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(end = 16.dp)
-                        ) {
+                    title = { 
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("Files")
+                            Spacer(modifier = Modifier.width(16.dp))
                             Text(
                                 text = when(state.connectionState) {
                                     ConnectionState.Connected -> "🟢 Connected"
@@ -201,12 +236,27 @@ fun ExplorerScreen(
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
-                            Spacer(modifier = Modifier.width(16.dp))
+                        }
+                    },
+                    actions = {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(end = 16.dp)
+                        ) {
                             IconButton(onClick = { viewModel.refresh() }) {
                                 Icon(Icons.Default.Refresh, contentDescription = "Refresh")
                             }
-                            IconButton(onClick = { showLogoutDialog = true }) {
-                                Icon(Icons.Default.ExitToApp, contentDescription = "Logout")
+                            Spacer(modifier = Modifier.width(8.dp))
+                            FilledTonalButton(
+                                onClick = { showLogoutDialog = true },
+                                colors = ButtonDefaults.filledTonalButtonColors(
+                                    containerColor = MaterialTheme.colorScheme.errorContainer,
+                                    contentColor = MaterialTheme.colorScheme.onErrorContainer
+                                )
+                            ) {
+                                Icon(Icons.Default.ExitToApp, contentDescription = "Logout", modifier = Modifier.size(18.dp))
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Logout")
                             }
                         }
                     }
@@ -222,16 +272,24 @@ fun ExplorerScreen(
             }
         },
         floatingActionButton = {
-            Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(
+                horizontalAlignment = Alignment.End, 
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.padding(bottom = 32.dp)
+            ) {
                 if (canUpload) {
-                    SmallFloatingActionButton(onClick = { filePicker.launch("*/*") }) {
-                        Icon(Icons.Default.Upload, "Upload File")
-                    }
+                    ExtendedFloatingActionButton(
+                        onClick = { filePicker.launch("*/*") },
+                        icon = { Icon(Icons.Default.Upload, "Upload File") },
+                        text = { Text("Upload") }
+                    )
                 }
                 if (canCreateFolder) {
-                    FloatingActionButton(onClick = { fileOpsViewModel.requestCreateFolder() }) {
-                        Icon(Icons.Default.CreateNewFolder, "New Folder")
-                    }
+                    ExtendedFloatingActionButton(
+                        onClick = { fileOpsViewModel.requestCreateFolder() },
+                        icon = { Icon(Icons.Default.CreateNewFolder, "New Folder") },
+                        text = { Text("New Folder") }
+                    )
                 }
                 if (fileOpsViewModel.hasClipboardItem) {
                     ExtendedFloatingActionButton(

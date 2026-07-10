@@ -22,4 +22,17 @@ object AppModule {
     val acknowledgedWorkIds = mutableSetOf<java.util.UUID>()
 
     lateinit var contentPolicy: ContentPolicy
+    
+    val documentSessionRepository = com.collegefiles.app.sync.DocumentSessionRepository()
+    lateinit var documentSessionService: com.collegefiles.app.sync.DocumentSessionService
+        private set
+
+    fun initialize(context: android.content.Context) {
+        documentSessionService = com.collegefiles.app.sync.DocumentSessionService(
+            context = context,
+            repository = documentSessionRepository,
+            smbClient = smbClient,
+            uploadManager = uploadManager
+        )
+    }
 }
