@@ -120,6 +120,8 @@ fun FileActionSheet(
     canRename: Boolean,
     canDelete: Boolean,
     onOpen: () -> Unit,
+    onCopy: () -> Unit,
+    onMove: () -> Unit,
     onRename: () -> Unit,
     onDelete: () -> Unit,
     onProperties: () -> Unit,
@@ -142,6 +144,16 @@ fun FileActionSheet(
                 headlineContent = { Text("Open") },
                 modifier = Modifier.clickableAction(onOpen)
             )
+            if (!item.isDirectory) {
+                ListItem(
+                    headlineContent = { Text("Copy") },
+                    modifier = Modifier.clickableAction(onCopy)
+                )
+                ListItem(
+                    headlineContent = { Text("Move") },
+                    modifier = Modifier.clickableAction(onMove)
+                )
+            }
             if (canRename) {
                 ListItem(
                     headlineContent = { Text("Rename") },
@@ -166,4 +178,4 @@ fun FileActionSheet(
 
 // Small helper to apply clickable modifier cleanly
 private fun Modifier.clickableAction(action: () -> Unit) =
-    this.then(Modifier.fillMaxWidth()).wrapContentHeight()
+    this.then(Modifier.fillMaxWidth()).wrapContentHeight().clickable { action() }

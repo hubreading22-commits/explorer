@@ -106,10 +106,13 @@ fun AppNavigation() {
                 RestrictedScreen(file = file, onBack = onBack)
             } else {
                 when (state.destination) {
-                    ViewerDestination.Pdf -> PdfViewerScreen(
-                        viewModel = remember(file?.path) { PdfViewerViewModel(file!!) },
-                        onBack = onBack
-                    )
+                    ViewerDestination.Pdf -> {
+                        val cacheDir = LocalContext.current.cacheDir
+                        PdfViewerScreen(
+                            viewModel = remember(file?.path) { PdfViewerViewModel(file!!, cacheDir) },
+                            onBack = onBack
+                        )
+                    }
                     ViewerDestination.Image -> ImageViewerScreen(
                         viewModel = remember(file?.path) { ImageViewerViewModel(file!!) },
                         onBack = onBack

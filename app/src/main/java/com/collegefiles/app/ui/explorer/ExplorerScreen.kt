@@ -23,6 +23,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import android.content.Context
+import android.net.Uri
+import android.provider.OpenableColumns
 import com.collegefiles.app.config.Capability
 import com.collegefiles.app.di.AppModule
 import com.smbcore.model.FileItem
@@ -53,9 +56,17 @@ fun ExplorerScreen(
     // File picker launcher for uploads
     val filePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         uri?.let {
-            val fileName = uri.lastPathSegment?.substringAfterLast('/') ?: "upload"
+            val fileName = getFileName(context, uri)
             val inputStream = context.contentResolver.openInputStream(uri)
             if (inputStream != null) {
+                // Log stream availability to debug 0-byte issue
+                try {
+                    val availableBytes = inputStream.available()
+                    android.util.Log.d("UploadDebug", "Stream opened for $fileName, available bytes: $availableBytes")
+                } catch (e: Exception) {
+                    android.util.Log.e("UploadDebug", "Failed to check available bytes for $fileName", e)
+                }
+
                 fileOpsViewModel.upload(
                     shareName = state.currentShare,
                     remotePath = state.breadcrumbs.joinToString("\\"),
@@ -63,6 +74,8 @@ fun ExplorerScreen(
                     fileName = fileName,
                     onSuccess = { viewModel.refresh() }
                 )
+            } else {
+                android.util.Log.e("UploadDebug", "Failed to open input stream for $fileName")
             }
         }
     }
@@ -100,6 +113,8 @@ fun ExplorerScreen(
                 val item = opsState.targetItem!!
                 if (item.isDirectory) viewModel.onFolderClick(item) else onFileClick(item)
             },
+            onCopy = { fileOpsViewModel.copyItem(state.currentShare) },
+            onMove = { fileOpsViewModel.cutItem(state.currentShare) },
             onRename = { fileOpsViewModel.requestRename() },
             onDelete = { fileOpsViewModel.requestDelete() },
             onProperties = { fileOpsViewModel.dismissActionSheet() },
@@ -165,7 +180,7 @@ fun ExplorerScreen(
                 BreadcrumbRow(
                     currentShare = state.currentShare,
                     breadcrumbs = state.breadcrumbs,
-                    onHomeClick = viewModel::onHomeClick,
+                    onHomeClick = { onNavigateBackToShares() },
                     onBreadcrumbClick = viewModel::onBreadcrumbClick
                 )
                 Divider()
@@ -182,6 +197,13 @@ fun ExplorerScreen(
                     FloatingActionButton(onClick = { fileOpsViewModel.requestCreateFolder() }) {
                         Icon(Icons.Default.CreateNewFolder, "New Folder")
                     }
+                }
+                if (fileOpsViewModel.hasClipboardItem) {
+                    ExtendedFloatingActionButton(
+                        onClick = { fileOpsViewModel.paste(state.currentShare, state.breadcrumbs.joinToString("\\")) { viewModel.refresh() } },
+                        icon = { Icon(Icons.Default.ContentPaste, "Paste") },
+                        text = { Text("Paste") }
+                    )
                 }
             }
         }
@@ -414,4 +436,26 @@ fun formatSize(size: Long): String {
 fun formatRelativeDate(millis: Long): String {
     // Simplified relative date for the MVP MVP
     return "Recently"
+}
+
+fun getFileName(context: Context, uri: Uri): String {
+    var result: String? = null
+    if (uri.scheme == "content") {
+        context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+            if (cursor.moveToFirst()) {
+                val index = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                if (index != -1) {
+                    result = cursor.getString(index)
+                }
+            }
+        }
+    }
+    if (result == null) {
+        result = uri.path
+        val cut = result?.lastIndexOf('/') ?: -1
+        if (cut != -1) {
+            result = result?.substring(cut + 1)
+        }
+    }
+    return result ?: "upload"
 }

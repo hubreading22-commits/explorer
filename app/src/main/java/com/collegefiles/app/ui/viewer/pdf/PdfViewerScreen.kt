@@ -35,7 +35,10 @@ data class PdfViewerState(
     val title: String = ""
 )
 
-class PdfViewerViewModel(private val file: FileItem) : ViewModel() {
+class PdfViewerViewModel(
+    private val file: FileItem,
+    private val cacheDir: File
+) : ViewModel() {
     private val _state = MutableStateFlow(PdfViewerState(title = file.name))
     val state: StateFlow<PdfViewerState> = _state.asStateFlow()
 
@@ -55,7 +58,7 @@ class PdfViewerViewModel(private val file: FileItem) : ViewModel() {
                     try {
                         // Write to app-private cache (not encrypted, but private to app)
                         val cacheFile = withContext(Dispatchers.IO) {
-                            val f = File.createTempFile("viewer_", ".pdf", null)
+                            val f = File.createTempFile("viewer_", ".pdf", cacheDir)
                             f.outputStream().use { out -> stream.inputStream().copyTo(out) }
                             f
                         }

@@ -22,6 +22,9 @@ class FileOpsViewModel(
     private val _state = MutableStateFlow(FileOpsState())
     val state: StateFlow<FileOpsState> = _state.asStateFlow()
 
+    private var clipboardItem: ClipboardItem? = null
+    val hasClipboardItem: Boolean get() = clipboardItem != null
+
     // ─── Action Sheet ────────────────────────────────────────────────────────────
 
     fun onLongPress(item: FileItem) {
@@ -118,7 +121,12 @@ class FileOpsViewModel(
                     onSuccess()
                 }
                 is SmbResult.Failure -> {
-                    _state.update { it.copy(isLoading = false, error = "Failed to create folder.") }
+                    val errorMsg = if (result.error is com.smbcore.model.SmbError.AlreadyExists) {
+                        "Folder already exists."
+                    } else {
+                        "Failed to create folder."
+                    }
+                    _state.update { it.copy(isLoading = false, error = errorMsg) }
                 }
             }
         }
@@ -143,4 +151,51 @@ class FileOpsViewModel(
             }
         }
     }
+
+    // ─── Clipboard ───────────────────────────────────────────────────────────────
+
+    fun copyItem(shareName: String) {
+        val item = _state.value.targetItem ?: return
+        clipboardItem = ClipboardItem(item, shareName, isCut = false)
+        _state.update { it.copy(showActionSheet = false, successMessage = "Copied to clipboard") }
+    }
+
+    fun cutItem(shareName: String) {
+        val item = _state.value.targetItem ?: return
+        clipboardItem = ClipboardItem(item, shareName, isCut = true)
+        _state.update { it.copy(showActionSheet = false, successMessage = "Cut to clipboard") }
+    }
+
+    fun paste(currentShare: String, currentPath: String, onSuccess: () -> Unit) {
+        val clip = clipboardItem ?: return
+        _state.update { it.copy(isLoading = true) }
+
+        val destPath = if (currentPath.isEmpty()) clip.item.name else "$currentPath\\${clip.item.name}"
+
+        viewModelScope.launch {
+            val result = withContext(Dispatchers.IO) {
+                if (clip.isCut) {
+                    smbClient.move(clip.sourceShare, clip.item.path, currentShare, destPath)
+                } else {
+                    smbClient.copy(clip.sourceShare, clip.item.path, currentShare, destPath)
+                }
+            }
+            when (result) {
+                is SmbResult.Success -> {
+                    if (clip.isCut) clipboardItem = null // Clear after move
+                    _state.update { it.copy(isLoading = false, successMessage = "Paste complete") }
+                    onSuccess()
+                }
+                is SmbResult.Failure -> {
+                    _state.update { it.copy(isLoading = false, error = "Paste failed. Check permissions.") }
+                }
+            }
+        }
+    }
 }
+
+data class ClipboardItem(
+    val item: FileItem,
+    val sourceShare: String,
+    val isCut: Boolean
+)

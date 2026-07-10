@@ -41,6 +41,7 @@ sealed class SmbError {
     data object NetworkUnavailable : SmbError()
     data object FileNotFound : SmbError()
     data object ShareNotFound : SmbError()
+    data object AlreadyExists : SmbError()
     data class Unknown(val message: String) : SmbError()
 }
 

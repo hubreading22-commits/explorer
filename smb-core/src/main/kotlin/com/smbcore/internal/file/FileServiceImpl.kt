@@ -35,6 +35,7 @@ internal class FileServiceImpl(
             when {
                 e.status.name.contains("ACCESS_DENIED") -> SmbResult.Failure(SmbError.PermissionDenied)
                 e.status.name.contains("OBJECT_NAME_NOT_FOUND") -> SmbResult.Failure(SmbError.FileNotFound)
+                e.status.name.contains("OBJECT_NAME_COLLISION") -> SmbResult.Failure(SmbError.AlreadyExists)
                 else -> SmbResult.Failure(SmbError.Unknown(e.message ?: "Unknown SMB Error"))
             }
         } catch (e: Exception) {
@@ -109,12 +110,71 @@ internal class FileServiceImpl(
     }
 
     fun copy(sourceShare: String, sourcePath: String, destShare: String, destPath: String): SmbResult<Unit> {
-        // Implementation stub for cross-share or intra-share copy
-        return SmbResult.Failure(SmbError.Unknown("Copy not fully implemented in stub"))
+        val result = withShare(sourceShare) { sShare ->
+            withShare(destShare) { dShare ->
+                try {
+                    val sFile = sShare.openFile(
+                        sourcePath,
+                        java.util.EnumSet.of(AccessMask.GENERIC_READ),
+                        java.util.EnumSet.of(FileAttributes.FILE_ATTRIBUTE_NORMAL),
+                        SMB2ShareAccess.ALL,
+                        SMB2CreateDisposition.FILE_OPEN,
+                        java.util.EnumSet.of(SMB2CreateOptions.FILE_NON_DIRECTORY_FILE)
+                    )
+                    
+                    val dFile = dShare.openFile(
+                        destPath,
+                        java.util.EnumSet.of(AccessMask.GENERIC_WRITE),
+                        java.util.EnumSet.of(FileAttributes.FILE_ATTRIBUTE_NORMAL),
+                        SMB2ShareAccess.ALL,
+                        SMB2CreateDisposition.FILE_OVERWRITE_IF,
+                        java.util.EnumSet.of(SMB2CreateOptions.FILE_NON_DIRECTORY_FILE)
+                    )
+                    
+                    sFile.inputStream.use { input ->
+                        dFile.outputStream.use { output ->
+                            input.copyTo(output, config.bufferSize)
+                        }
+                    }
+                    sFile.close()
+                    dFile.close()
+                    SmbResult.Success(Unit)
+                } catch (e: Exception) {
+                    SmbResult.Failure(SmbError.Unknown("Copy failed: ${e.message}"))
+                }
+            }
+        }
+        return result
     }
 
     fun move(sourceShare: String, sourcePath: String, destShare: String, destPath: String): SmbResult<Unit> {
-        return SmbResult.Failure(SmbError.Unknown("Move not fully implemented in stub"))
+        if (sourceShare == destShare) {
+            // Intra-share move (rename)
+            return withShare(sourceShare) { share ->
+                try {
+                    val file = share.openFile(
+                        sourcePath,
+                        java.util.EnumSet.of(AccessMask.DELETE),
+                        null,
+                        SMB2ShareAccess.ALL,
+                        SMB2CreateDisposition.FILE_OPEN,
+                        null
+                    )
+                    file.rename(destPath)
+                    file.close()
+                    SmbResult.Success(Unit)
+                } catch (e: Exception) {
+                    SmbResult.Failure(SmbError.Unknown("Move failed: ${e.message}"))
+                }
+            }
+        } else {
+            // Cross-share move (copy then delete)
+            val copyResult = copy(sourceShare, sourcePath, destShare, destPath)
+            if (copyResult is SmbResult.Success) {
+                return delete(sourceShare, sourcePath)
+            }
+            return copyResult
+        }
     }
 
     fun createFolder(shareName: String, path: String): SmbResult<Unit> = withShare(shareName) { share ->
