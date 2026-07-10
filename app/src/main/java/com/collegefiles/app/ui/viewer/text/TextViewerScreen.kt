@@ -13,6 +13,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.collegefiles.app.di.AppModule
+import com.smbcore.io.inputStream
 import com.smbcore.model.FileItem
 import com.smbcore.model.SmbResult
 import kotlinx.coroutines.Dispatchers
