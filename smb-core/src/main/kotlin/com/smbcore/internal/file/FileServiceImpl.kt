@@ -174,13 +174,13 @@ internal class FileServiceImpl(
         } catch (e: Exception) {
             onStateChange(if (e is kotlinx.coroutines.CancellationException) UploadState.Cancelled else UploadState.Failed(e.message ?: "Unknown error"))
             
-            // If the coroutine was cancelled (e.g., from WorkManager), the Thread's interrupt flag
-            // might be set. If we don't clear it, subsequent blocking I/O calls (like share.rm)
-            // will instantly abort with ClosedByInterruptException.
+            // Clear interrupt flag before entering NonCancellable I/O to prevent fast-failing
             Thread.interrupted()
             
-            try { file.close() } catch (_: Exception) {}
-            try { share.rm(tempPath) } catch (_: Exception) {}
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO + kotlinx.coroutines.NonCancellable) {
+                try { file.close() } catch (_: Exception) {}
+                try { share.rm(tempPath) } catch (_: Exception) {}
+            }
             
             if (e is kotlinx.coroutines.CancellationException) {
                 return@withShare SmbResult.Failure(SmbError.Unknown("Upload cancelled"))

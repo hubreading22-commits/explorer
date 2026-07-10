@@ -71,12 +71,11 @@ fun ExplorerScreen(
     }
     
     val uploads by AppModule.uploadManager.observeUploads().collectAsState(initial = emptyList())
-    var completedUploads by remember { mutableStateOf(setOf<java.util.UUID>()) }
 
     LaunchedEffect(uploads) {
-        val newlyFinished = uploads.filter { it.state.isFinished && !completedUploads.contains(it.id) }
+        val newlyFinished = uploads.filter { it.state.isFinished && !AppModule.acknowledgedWorkIds.contains(it.id) }
         for (work in newlyFinished) {
-            completedUploads = completedUploads + work.id
+            AppModule.acknowledgedWorkIds.add(work.id)
             if (work.state == androidx.work.WorkInfo.State.SUCCEEDED) {
                 viewModel.refresh()
             } else if (work.state == androidx.work.WorkInfo.State.FAILED) {

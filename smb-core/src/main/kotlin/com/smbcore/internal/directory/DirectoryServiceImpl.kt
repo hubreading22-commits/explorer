@@ -23,7 +23,7 @@ internal class DirectoryServiceImpl(private val connectionManager: ConnectionMan
 
                 val results = mutableListOf<FileItem>()
                 for (f in share.list(path, "*")) {
-                    if (f.fileName != "." && f.fileName != "..") {
+                    if (f.fileName != "." && f.fileName != ".." && !f.fileName.endsWith(".uploading")) {
                         results.add(ModelMapper.mapToFileItem(path, f))
                     }
                 }

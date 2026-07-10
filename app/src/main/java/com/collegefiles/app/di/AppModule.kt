@@ -15,10 +15,11 @@ object AppModule {
 
     lateinit var credentialStore: com.smbcore.model.CredentialStore
     lateinit var uploadManager: com.collegefiles.app.upload.UploadManager
-    
-    val smbClient: SmbClient by lazy {
-        SmbClient.create(smbConfig, credentialStore)
+    val smbClient: com.smbcore.SmbClient by lazy {
+        com.smbcore.SmbClient.create(smbConfig, credentialStore)
     }
+        
+    val acknowledgedWorkIds = mutableSetOf<java.util.UUID>()
 
     lateinit var contentPolicy: ContentPolicy
 }
