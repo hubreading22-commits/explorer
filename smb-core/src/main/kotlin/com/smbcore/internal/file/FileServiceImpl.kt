@@ -208,6 +208,11 @@ internal class FileServiceImpl(
             }
             
             onStateChange(UploadState.Renaming)
+            try {
+                share.rm(remotePath)
+            } catch (e: Exception) {
+                // Ignore, might not exist or might be locked
+            }
             val renameFile = share.openFile(
                 tempPath,
                 java.util.EnumSet.of(AccessMask.DELETE),
