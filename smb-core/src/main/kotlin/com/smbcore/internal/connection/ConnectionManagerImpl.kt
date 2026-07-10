@@ -42,6 +42,11 @@ internal class ConnectionManagerImpl(private val config: SmbConfig) {
     val connectionState: StateFlow<ConnectionState> = _connectionState.asStateFlow()
 
     init {
+        recreateSmbClient()
+    }
+
+    private fun recreateSmbClient() {
+        try { smbClient?.close() } catch (_: Exception) {}
         val smbjConfig = SmbjConfig.builder()
             .withReadBufferSize(config.bufferSize)
             .withWriteBufferSize(config.bufferSize)
@@ -57,6 +62,7 @@ internal class ConnectionManagerImpl(private val config: SmbConfig) {
         return try {
             // Always logout to ensure any stale sockets or sessions are closed
             logout()
+            recreateSmbClient()
 
             val conn = smbClient!!.connect(config.serverIP)
             this.connection = conn
@@ -151,6 +157,8 @@ internal class ConnectionManagerImpl(private val config: SmbConfig) {
                     // Force close old broken handles
                     try { session?.logoff() } catch (_: Exception) {}
                     try { connection?.close() } catch (_: Exception) {}
+                    
+                    recreateSmbClient()
                     
                     val conn = smbClient!!.connect(config.serverIP)
                     val ac = AuthenticationContext(
