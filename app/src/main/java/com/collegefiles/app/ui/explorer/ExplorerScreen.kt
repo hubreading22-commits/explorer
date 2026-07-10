@@ -197,24 +197,24 @@ fun ExplorerScreen(
             }
         }
     ) { paddingValues ->
-        Box(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            when {
-                state.isLoading -> {
-                    SkeletonFileLoadingList()
-                }
-                state.error != null -> {
-                    ExplorerErrorState(error = state.error!!, onRetry = { viewModel.refresh() })
-                }
-                state.files.isEmpty() -> {
-                    ExplorerEmptyState()
-                }
-                else -> {
-                    Column(modifier = Modifier.fillMaxSize()) {
-                        UploadProgressBanner(uploads)
+            UploadProgressBanner(uploads)
+            Box(modifier = Modifier.weight(1f)) {
+                when {
+                    state.isLoading -> {
+                        SkeletonFileLoadingList()
+                    }
+                    state.error != null -> {
+                        ExplorerErrorState(error = state.error!!, onRetry = { viewModel.refresh() })
+                    }
+                    state.files.isEmpty() -> {
+                        ExplorerEmptyState()
+                    }
+                    else -> {
                         LazyColumn(
                             state = listState,
                             modifier = Modifier.weight(1f)
