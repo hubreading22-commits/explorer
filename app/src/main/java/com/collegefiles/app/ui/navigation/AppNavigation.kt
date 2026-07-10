@@ -33,8 +33,6 @@ import com.collegefiles.app.ui.viewer.video.VideoPlayerScreen
 fun AppNavigation() {
     val navController = rememberNavController()
 
-    val loginViewModel = remember { LoginViewModel() }
-    val sharesViewModel = remember { SharesViewModel() }
     val viewerViewModel = remember { ViewerViewModel() }
     val fileOpsViewModel = remember { FileOpsViewModel() }
 
@@ -51,6 +49,7 @@ fun AppNavigation() {
         }
 
         composable("login") {
+            val loginViewModel: LoginViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
             LoginScreen(
                 viewModel = loginViewModel,
                 onLoginSuccess = {
@@ -62,6 +61,7 @@ fun AppNavigation() {
         }
 
         composable("shares") {
+            val sharesViewModel: SharesViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
             SharesScreen(
                 viewModel = sharesViewModel,
                 onNavigateToShare = { shareName ->
