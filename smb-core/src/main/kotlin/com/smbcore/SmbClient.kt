@@ -30,17 +30,18 @@ interface SmbClient {
     suspend fun createFolder(shareName: String, path: String): SmbResult<Unit>
     
     companion object {
-        fun create(config: SmbConfig): SmbClient {
-            return SmbClientImpl(config)
+        fun create(config: SmbConfig, credentialStore: CredentialStore? = null): SmbClient {
+            return SmbClientImpl(config, credentialStore)
         }
     }
 }
 
 internal class SmbClientImpl(
-    private val config: SmbConfig
+    private val config: SmbConfig,
+    private val credentialStore: CredentialStore?
 ) : SmbClient {
 
-    private val connectionManager = ConnectionManagerImpl(config)
+    private val connectionManager = ConnectionManagerImpl(config, credentialStore)
     private val shareService = ShareServiceImpl(connectionManager)
     private val directoryService = DirectoryServiceImpl(connectionManager)
     private val fileService = FileServiceImpl(connectionManager, config)

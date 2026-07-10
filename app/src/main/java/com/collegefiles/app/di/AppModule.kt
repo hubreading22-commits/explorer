@@ -13,8 +13,10 @@ object AppModule {
         writeTimeout = 10000
     )
 
+    lateinit var credentialStore: com.smbcore.model.CredentialStore
+    
     val smbClient: SmbClient by lazy {
-        SmbClient.create(smbConfig)
+        SmbClient.create(smbConfig, credentialStore)
     }
 
     lateinit var contentPolicy: ContentPolicy

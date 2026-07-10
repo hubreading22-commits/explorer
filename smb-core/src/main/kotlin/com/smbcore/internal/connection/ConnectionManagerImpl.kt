@@ -19,14 +19,12 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.delay
 import java.util.concurrent.TimeUnit
 
-private data class CredentialCache(val credentials: Credentials) {
-    var isCleared = false
-    fun clear() {
-        isCleared = true
-    }
-}
+import com.smbcore.model.CredentialStore
 
-internal class ConnectionManagerImpl(private val config: SmbConfig) {
+internal class ConnectionManagerImpl(
+    private val config: SmbConfig,
+    private val credentialStore: CredentialStore?
+) {
 
     private var smbClient: SMBClient? = null
     var connection: Connection? = null
@@ -35,7 +33,6 @@ internal class ConnectionManagerImpl(private val config: SmbConfig) {
         private set
     private var currentUser: User? = null
     
-    private var credentialCache: CredentialCache? = null
     private val mutex = Mutex()
     
     private val _connectionState = MutableStateFlow(ConnectionState.DISCONNECTED)
@@ -74,8 +71,8 @@ internal class ConnectionManagerImpl(private val config: SmbConfig) {
             val user = User(credentials.username, credentials.domain)
             this.currentUser = user
             
-            // Store credentials in RAM
-            this.credentialCache = CredentialCache(credentials)
+            // Store credentials in persistent store (if available)
+            credentialStore?.save(credentials)
             
             _connectionState.value = ConnectionState.CONNECTED
 
@@ -84,14 +81,12 @@ internal class ConnectionManagerImpl(private val config: SmbConfig) {
             when {
                 e.status.name.contains("LOGON_FAILURE") -> {
                     _connectionState.value = ConnectionState.UNAUTHENTICATED
-                    credentialCache?.clear()
-                    credentialCache = null
+                    credentialStore?.clear()
                     SmbResult.Failure(SmbError.AuthenticationFailed)
                 }
                 e.status.name.contains("ACCESS_DENIED") -> {
                     _connectionState.value = ConnectionState.UNAUTHENTICATED
-                    credentialCache?.clear()
-                    credentialCache = null
+                    credentialStore?.clear()
                     SmbResult.Failure(SmbError.PermissionDenied)
                 }
                 else -> {
@@ -113,8 +108,7 @@ internal class ConnectionManagerImpl(private val config: SmbConfig) {
 
     fun logout(): SmbResult<Unit> {
         return try {
-            credentialCache?.clear()
-            credentialCache = null
+            credentialStore?.clear()
             try { session?.logoff() } catch (_: Exception) {}
             try { connection?.close() } catch (_: Exception) {}
             session = null
@@ -139,8 +133,8 @@ internal class ConnectionManagerImpl(private val config: SmbConfig) {
             // Check again inside lock
             if (isConnected()) return@withLock SmbResult.Success(Unit)
 
-            val cache = credentialCache
-            if (cache == null || cache.isCleared) {
+            val creds = credentialStore?.get()
+            if (creds == null) {
                 _connectionState.value = ConnectionState.UNAUTHENTICATED
                 return@withLock SmbResult.Failure(SmbError.AuthenticationFailed)
             }
@@ -162,9 +156,9 @@ internal class ConnectionManagerImpl(private val config: SmbConfig) {
                     
                     val conn = smbClient!!.connect(config.serverIP)
                     val ac = AuthenticationContext(
-                        cache.credentials.username,
-                        cache.credentials.password.clone(),
-                        cache.credentials.domain
+                        creds.username,
+                        creds.password.clone(),
+                        creds.domain
                     )
                     val sess = conn.authenticate(ac)
                     
@@ -175,8 +169,7 @@ internal class ConnectionManagerImpl(private val config: SmbConfig) {
                     return@withLock SmbResult.Success(Unit)
                 } catch (e: com.hierynomus.mssmb2.SMBApiException) {
                     if (e.status.name.contains("LOGON_FAILURE") || e.status.name.contains("ACCESS_DENIED")) {
-                        credentialCache?.clear()
-                        credentialCache = null
+                        credentialStore?.clear()
                         _connectionState.value = ConnectionState.UNAUTHENTICATED
                         return@withLock SmbResult.Failure(SmbError.AuthenticationFailed)
                     }

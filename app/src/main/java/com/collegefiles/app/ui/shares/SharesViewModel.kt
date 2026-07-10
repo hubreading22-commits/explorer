@@ -28,11 +28,6 @@ class SharesViewModel(
     }
 
     private fun loadShares() {
-        if (!smbClient.isConnected()) {
-            _state.update { it.copy(sessionExpired = true, isConnected = false) }
-            return
-        }
-
         _state.update { it.copy(isLoading = true, error = null, isConnected = true) }
 
         viewModelScope.launch {
@@ -54,9 +49,17 @@ class SharesViewModel(
                 }
                 is SmbResult.Failure -> {
                     when (result.error) {
-                        is SmbError.NetworkUnavailable, is SmbError.AuthenticationFailed -> {
-                            // If network drops or auth fails, we assume session is dead
+                        is SmbError.AuthenticationFailed -> {
                             _state.update { it.copy(sessionExpired = true, isConnected = false) }
+                        }
+                        is SmbError.NetworkUnavailable -> {
+                            _state.update { 
+                                it.copy(
+                                    isLoading = false,
+                                    isConnected = false,
+                                    error = "Network unavailable. Please check your connection."
+                                )
+                            }
                         }
                         else -> {
                             _state.update { 

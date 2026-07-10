@@ -77,11 +77,6 @@ class ExplorerViewModel(
     }
 
     private fun loadDirectory() {
-        if (!smbClient.isConnected()) {
-            _state.update { it.copy(connectionState = ConnectionState.Expired) }
-            return
-        }
-
         _state.update { it.copy(isLoading = true, error = null, connectionState = ConnectionState.Connected) }
 
         viewModelScope.launch {
@@ -109,8 +104,17 @@ class ExplorerViewModel(
                 }
                 is SmbResult.Failure -> {
                     when (result.error) {
-                        is SmbError.NetworkUnavailable, is SmbError.AuthenticationFailed -> {
+                        is SmbError.AuthenticationFailed -> {
                             _state.update { it.copy(connectionState = ConnectionState.Expired) }
+                        }
+                        is SmbError.NetworkUnavailable -> {
+                            _state.update { 
+                                it.copy(
+                                    isLoading = false,
+                                    connectionState = ConnectionState.Disconnected,
+                                    error = "Network unavailable. Please check your connection."
+                                )
+                            }
                         }
                         is SmbError.PermissionDenied -> {
                             _state.update { 

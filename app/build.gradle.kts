@@ -40,9 +40,10 @@ dependencies {
     // Project Modules
     implementation(project(":smb-core"))
 
-    // AndroidX Core & Lifecycle
+    // AndroidX Core & Lifecycle & Security
     implementation("androidx.core:core-ktx:1.12.0")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.7.0")
+    implementation("androidx.security:security-crypto:1.1.0-alpha06")
 
     // Compose BOM
     val composeBom = platform("androidx.compose:compose-bom:2024.02.01")
