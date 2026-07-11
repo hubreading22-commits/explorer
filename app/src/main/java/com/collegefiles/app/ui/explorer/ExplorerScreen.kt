@@ -98,6 +98,22 @@ fun ExplorerScreen(
         }
     }
 
+    val fileOpState by com.collegefiles.app.di.AppModule.fileOperationManager.state.collectAsState()
+    LaunchedEffect(fileOpState) {
+        when (val currentOpState = fileOpState) {
+            is com.collegefiles.app.ops.FileOperationState.Completed -> {
+                scope.launch { snackbarHostState.showSnackbar(currentOpState.message) }
+                viewModel.refresh()
+                com.collegefiles.app.di.AppModule.fileOperationManager.dismiss()
+            }
+            is com.collegefiles.app.ops.FileOperationState.Failed -> {
+                scope.launch { snackbarHostState.showSnackbar(currentOpState.error) }
+                com.collegefiles.app.di.AppModule.fileOperationManager.dismiss()
+            }
+            else -> {}
+        }
+    }
+
     LaunchedEffect(state.connectionState) {
         if (state.connectionState == ConnectionState.Expired) onSessionExpired()
     }

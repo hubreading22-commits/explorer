@@ -118,22 +118,9 @@ class FileOpsViewModel(
 
     fun delete(shareName: String, onSuccess: () -> Unit) {
         val item = _state.value.targetItem ?: return
-        _state.update { it.copy(isLoading = true, showDeleteDialog = false) }
-
-        viewModelScope.launch {
-            val result = withContext(Dispatchers.IO) {
-                smbClient.delete(shareName, item.path)
-            }
-            when (result) {
-                is SmbResult.Success -> {
-                    _state.update { it.copy(isLoading = false, successMessage = "Deleted successfully") }
-                    onSuccess()
-                }
-                is SmbResult.Failure -> {
-                    _state.update { it.copy(isLoading = false, error = "Delete failed. Check permissions.") }
-                }
-            }
-        }
+        _state.update { it.copy(showDeleteDialog = false) }
+        AppModule.fileOperationManager.deleteItems(listOf(com.smbcore.model.SmbPath(shareName, item.path)))
+        onSuccess()
     }
 
     fun createFolder(shareName: String, currentPath: String, folderName: String, onSuccess: () -> Unit) {
