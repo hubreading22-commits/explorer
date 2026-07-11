@@ -56,7 +56,7 @@ class ShareReceiverViewModel(
 
     fun onReplace(uri: Uri, session: com.collegefiles.app.sync.DocumentSession, nextUris: List<Uri>) {
         viewModelScope.launch {
-            uploadManager.enqueueUpload(uri, session.shareName, session.remotePath)
+            uploadManager.enqueueUpload(uri, session.shareName, session.remotePath, overwrite = true)
             // Cleanup the active session since it's now updated? Or keep monitoring?
             // Usually we just upload it and let the server have the new version.
             processNextUri(nextUris)

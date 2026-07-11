@@ -14,5 +14,9 @@ data class FileOpsState(
     val showActionSheet: Boolean = false,
 
     // Currently targeted item
-    val targetItem: FileItem? = null
+    val targetItem: FileItem? = null,
+    
+    // Batch targets
+    val batchTargetItems: Set<com.smbcore.model.SmbPath> = emptySet(),
+    val showBatchDeleteDialog: Boolean = false
 )

@@ -46,7 +46,30 @@ class ExplorerViewModel(
     }
 
     fun onLongClick(item: FileItem) {
-        // Future Phase: show Action Bottom Sheet or Menu
+        if (!_state.value.selectionMode) {
+            _state.update { it.copy(selectionMode = true) }
+        }
+        toggleSelection(item)
+    }
+    
+    fun toggleSelection(item: FileItem) {
+        val smbPath = com.smbcore.model.SmbPath(shareName, item.path)
+        val currentSelection = _state.value.selectedItems.toMutableSet()
+        if (currentSelection.contains(smbPath)) {
+            currentSelection.remove(smbPath)
+        } else {
+            currentSelection.add(smbPath)
+        }
+        
+        _state.update { 
+            val newSelectionMode = currentSelection.isNotEmpty() || it.selectionMode
+            // Turn off selection mode if empty? User requested back-gesture to clear selection. Let's keep it until back pressed or empty.
+            it.copy(selectedItems = currentSelection, selectionMode = if (currentSelection.isEmpty()) false else true) 
+        }
+    }
+    
+    fun clearSelection() {
+        _state.update { it.copy(selectionMode = false, selectedItems = emptySet()) }
     }
 
     fun onBreadcrumbClick(index: Int) {
@@ -106,6 +129,11 @@ class ExplorerViewModel(
      * Returns false if we are already at the root (signaling the UI to pop back to Shares Screen).
      */
     fun navigateUp(): Boolean {
+        if (_state.value.selectionMode) {
+            clearSelection()
+            return true
+        }
+        
         val currentBreadcrumbs = _state.value.breadcrumbs
         if (currentBreadcrumbs.isEmpty()) {
             return false // Already at root, let system handle back navigation

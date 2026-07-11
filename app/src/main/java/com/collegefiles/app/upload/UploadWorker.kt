@@ -36,6 +36,7 @@ class UploadWorker(
         
         val uri = Uri.parse(uriStr)
         val fileName = remotePath.substringAfterLast('\\', remotePath)
+        val overwrite = inputData.getBoolean("overwrite", false)
 
         createNotificationChannel()
 
@@ -67,6 +68,7 @@ class UploadWorker(
                 shareName = shareName,
                 remotePath = remotePath,
                 expectedSize = expectedSize,
+                overwrite = overwrite,
                 onProgress = { progress ->
                     // Update notification and WorkManager progress
                     setProgress(workDataOf(

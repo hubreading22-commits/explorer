@@ -12,11 +12,12 @@ class UploadManager(private val context: Context) {
     
     private val workManager = WorkManager.getInstance(context)
 
-    fun enqueueUpload(uri: Uri, shareName: String, remotePath: String): UUID {
+    fun enqueueUpload(uri: Uri, shareName: String, remotePath: String, overwrite: Boolean = false): UUID {
         val inputData = workDataOf(
             "uri" to uri.toString(),
             "shareName" to shareName,
-            "remotePath" to remotePath
+            "remotePath" to remotePath,
+            "overwrite" to overwrite
         )
 
         val request = OneTimeWorkRequestBuilder<UploadWorker>()

@@ -22,6 +22,7 @@ object AppModule {
     val acknowledgedWorkIds = mutableSetOf<java.util.UUID>()
 
     lateinit var contentPolicy: ContentPolicy
+    lateinit var fileOperationManager: com.collegefiles.app.ops.FileOperationManager
     
     val documentSessionRepository = com.collegefiles.app.sync.DocumentSessionRepository()
     lateinit var documentSessionService: com.collegefiles.app.sync.DocumentSessionService
@@ -44,5 +45,7 @@ object AppModule {
             context = context,
             repository = documentSessionRepository
         )
+        
+        fileOperationManager = com.collegefiles.app.ops.FileOperationManager(smbClient)
     }
 }

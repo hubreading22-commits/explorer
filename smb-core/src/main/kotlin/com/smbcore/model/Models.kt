@@ -6,6 +6,11 @@ data class Share(
     val name: String
 )
 
+data class SmbPath(
+    val shareName: String,
+    val path: String
+)
+
 enum class FileType {
     FOLDER, PDF, IMAGE, VIDEO, AUDIO, WORD, EXCEL, POWERPOINT, ZIP, TEXT, OFFICE, UNKNOWN
 }

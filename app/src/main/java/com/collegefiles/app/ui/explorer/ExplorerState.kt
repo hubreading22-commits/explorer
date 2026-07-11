@@ -17,5 +17,5 @@ data class ExplorerState(
     
     // Future-proofing
     val selectionMode: Boolean = false,
-    val selectedItems: Set<String> = emptySet()
+    val selectedItems: Set<com.smbcore.model.SmbPath> = emptySet()
 )

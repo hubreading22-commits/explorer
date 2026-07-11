@@ -27,10 +27,16 @@ interface SmbClient {
         shareName: String, 
         remotePath: String, 
         expectedSize: Long,
+        overwrite: Boolean = false,
         onProgress: suspend (UploadProgress) -> Unit,
         onStateChange: suspend (UploadState) -> Unit
     ): SmbResult<Unit>
     suspend fun delete(shareName: String, path: String): SmbResult<Unit>
+    suspend fun deleteRecursive(
+        shareName: String,
+        path: String,
+        onProgress: suspend (deletedCount: Int) -> Unit
+    ): SmbResult<Unit>
     suspend fun rename(shareName: String, oldPath: String, newName: String): SmbResult<Unit>
     suspend fun copy(sourceShare: String, sourcePath: String, destShare: String, destPath: String): SmbResult<Unit>
     suspend fun move(sourceShare: String, sourcePath: String, destShare: String, destPath: String): SmbResult<Unit>
@@ -89,14 +95,23 @@ internal class SmbClientImpl(
         shareName: String, 
         remotePath: String, 
         expectedSize: Long,
+        overwrite: Boolean,
         onProgress: suspend (UploadProgress) -> Unit,
         onStateChange: suspend (UploadState) -> Unit
     ): SmbResult<Unit> {
-        return fileService.upload(input, shareName, remotePath, expectedSize, onProgress, onStateChange)
+        return fileService.upload(input, shareName, remotePath, expectedSize, overwrite, onProgress, onStateChange)
     }
 
     override suspend fun delete(shareName: String, path: String): SmbResult<Unit> {
         return fileService.delete(shareName, path)
+    }
+
+    override suspend fun deleteRecursive(
+        shareName: String,
+        path: String,
+        onProgress: suspend (deletedCount: Int) -> Unit
+    ): SmbResult<Unit> {
+        return fileService.deleteRecursive(shareName, path, onProgress)
     }
 
     override suspend fun rename(shareName: String, oldPath: String, newName: String): SmbResult<Unit> {

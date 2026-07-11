@@ -118,8 +118,14 @@ fun ExplorerScreen(
                 val item = opsState.targetItem!!
                 if (item.isDirectory) viewModel.onFolderClick(item) else onFileClick(item)
             },
-            onCopy = { fileOpsViewModel.copyItem(state.currentShare) },
-            onMove = { fileOpsViewModel.cutItem(state.currentShare) },
+            onCopy = { 
+                fileOpsViewModel.dismissActionSheet()
+                fileOpsViewModel.requestBatchCopy(setOf(com.smbcore.model.SmbPath(state.currentShare, opsState.targetItem!!.path)))
+            },
+            onMove = { 
+                fileOpsViewModel.dismissActionSheet()
+                fileOpsViewModel.requestBatchMove(setOf(com.smbcore.model.SmbPath(state.currentShare, opsState.targetItem!!.path)))
+            },
             onRename = { fileOpsViewModel.requestRename() },
             onDelete = { fileOpsViewModel.requestDelete() },
             onProperties = { fileOpsViewModel.dismissActionSheet() },
@@ -139,6 +145,18 @@ fun ExplorerScreen(
         DeleteConfirmationDialog(
             item = opsState.targetItem!!,
             onConfirm = { fileOpsViewModel.delete(state.currentShare) { viewModel.refresh() } },
+            onDismiss = { fileOpsViewModel.dismissAllDialogs() }
+        )
+    }
+    if (opsState.showBatchDeleteDialog) {
+        BatchDeleteConfirmationDialog(
+            count = opsState.batchTargetItems.size,
+            onConfirm = {
+                fileOpsViewModel.executeBatchDelete {
+                    viewModel.refresh()
+                    viewModel.clearSelection()
+                }
+            },
             onDismiss = { fileOpsViewModel.dismissAllDialogs() }
         )
     }
@@ -222,45 +240,75 @@ fun ExplorerScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             Column {
-                TopAppBar(
-                    title = { 
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("Files")
-                            Spacer(modifier = Modifier.width(16.dp))
-                            Text(
-                                text = when(state.connectionState) {
-                                    ConnectionState.Connected -> "🟢 Connected"
-                                    ConnectionState.Expired, ConnectionState.Disconnected -> "🔴 Offline"
-                                    else -> "🟡 Reconnecting"
-                                },
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    },
-                    actions = {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(end = 16.dp)
-                        ) {
-                            IconButton(onClick = { viewModel.refresh() }) {
-                                Icon(Icons.Default.Refresh, contentDescription = "Refresh")
+                if (state.selectionMode) {
+                    TopAppBar(
+                        title = { Text("${state.selectedItems.size} selected") },
+                        navigationIcon = {
+                            IconButton(onClick = { viewModel.clearSelection() }) {
+                                Icon(Icons.Default.Close, contentDescription = "Clear Selection")
                             }
-                            Spacer(modifier = Modifier.width(8.dp))
-                            FilledTonalButton(
-                                onClick = { showLogoutDialog = true },
-                                colors = ButtonDefaults.filledTonalButtonColors(
-                                    containerColor = MaterialTheme.colorScheme.errorContainer,
-                                    contentColor = MaterialTheme.colorScheme.onErrorContainer
+                        },
+                        actions = {
+                            if (canDelete) {
+                                IconButton(onClick = { fileOpsViewModel.requestBatchDelete(state.selectedItems) }) {
+                                    Icon(Icons.Default.Delete, contentDescription = "Delete")
+                                }
+                            }
+                            IconButton(onClick = { fileOpsViewModel.requestBatchCopy(state.selectedItems) }) {
+                                Icon(Icons.Default.FileCopy, contentDescription = "Copy")
+                            }
+                            IconButton(onClick = { fileOpsViewModel.requestBatchMove(state.selectedItems) }) {
+                                Icon(Icons.Default.DriveFileMove, contentDescription = "Move")
+                            }
+                        },
+                        colors = TopAppBarDefaults.topAppBarColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer,
+                            titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                            actionIconContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                            navigationIconContentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    )
+                } else {
+                    TopAppBar(
+                        title = { 
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text("Files")
+                                Spacer(modifier = Modifier.width(16.dp))
+                                Text(
+                                    text = when(state.connectionState) {
+                                        ConnectionState.Connected -> "🟢 Connected"
+                                        ConnectionState.Expired, ConnectionState.Disconnected -> "🔴 Offline"
+                                        else -> "🟡 Reconnecting"
+                                    },
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
+                            }
+                        },
+                        actions = {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(end = 16.dp)
                             ) {
-                                Icon(Icons.Default.ExitToApp, contentDescription = "Logout", modifier = Modifier.size(18.dp))
+                                IconButton(onClick = { viewModel.refresh() }) {
+                                    Icon(Icons.Default.Refresh, contentDescription = "Refresh")
+                                }
                                 Spacer(modifier = Modifier.width(8.dp))
-                                Text("Logout")
+                                FilledTonalButton(
+                                    onClick = { showLogoutDialog = true },
+                                    colors = ButtonDefaults.filledTonalButtonColors(
+                                        containerColor = MaterialTheme.colorScheme.errorContainer,
+                                        contentColor = MaterialTheme.colorScheme.onErrorContainer
+                                    )
+                                ) {
+                                    Icon(Icons.Default.ExitToApp, contentDescription = "Logout", modifier = Modifier.size(18.dp))
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("Logout")
+                                }
                             }
                         }
-                    }
-                )
+                    )
+                }
                 BreadcrumbRow(
                     currentShare = state.currentShare,
                     breadcrumbs = state.breadcrumbs,
@@ -290,21 +338,6 @@ fun ExplorerScreen(
                         icon = { Icon(Icons.Default.CreateNewFolder, "New Folder") },
                         text = { Text("New Folder") }
                     )
-                }
-                if (fileOpsViewModel.hasClipboardItem) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                        SmallFloatingActionButton(
-                            onClick = { fileOpsViewModel.clearClipboard() },
-                            containerColor = MaterialTheme.colorScheme.secondaryContainer
-                        ) {
-                            Icon(Icons.Default.Close, "Cancel Paste")
-                        }
-                        ExtendedFloatingActionButton(
-                            onClick = { fileOpsViewModel.paste(state.currentShare, state.breadcrumbs.joinToString("\\")) { viewModel.refresh() } },
-                            icon = { Icon(Icons.Default.ContentPaste, "Paste") },
-                            text = { Text("Paste") }
-                        )
-                    }
                 }
             }
         }
@@ -359,15 +392,22 @@ fun ExplorerScreen(
                             items(state.files, key = { it.path }) { file ->
                                 FileItemRow(
                                     item = file,
+                                    selectionMode = state.selectionMode,
+                                    isSelected = state.selectedItems.contains(com.smbcore.model.SmbPath(state.currentShare, file.path)),
                                     onClick = {
-                                        if (file.isDirectory) {
-                                            viewModel.onFolderClick(file)
+                                        if (state.selectionMode) {
+                                            viewModel.toggleSelection(file)
                                         } else {
-                                            onFileClick(file) // Delegate to router in AppNavigation
+                                            if (file.isDirectory) {
+                                                viewModel.onFolderClick(file)
+                                            } else {
+                                                onFileClick(file) // Delegate to router in AppNavigation
+                                            }
                                         }
                                     },
                                     onLongClick = {
-                                        fileOpsViewModel.onLongPress(file)
+                                        viewModel.onLongClick(file)
+                                        // Also trigger fileOps if needed, but for now we enter selection mode
                                     }
                                 )
                                 Divider(modifier = Modifier.padding(start = 72.dp)) // ChromeOS style offset divider
@@ -615,12 +655,15 @@ fun BreadcrumbRow(
 @Composable
 fun FileItemRow(
     item: FileItem,
+    selectionMode: Boolean = false,
+    isSelected: Boolean = false,
     onClick: () -> Unit,
     onLongClick: () -> Unit
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .background(if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f) else Color.Transparent)
             .combinedClickable(
                 onClick = onClick,
                 onLongClick = onLongClick
@@ -628,6 +671,13 @@ fun FileItemRow(
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
+        if (selectionMode) {
+            Checkbox(
+                checked = isSelected,
+                onCheckedChange = { onClick() },
+                modifier = Modifier.padding(end = 16.dp)
+            )
+        }
         Icon(
             imageVector = if (item.isDirectory) Icons.Default.Folder else Icons.Default.InsertDriveFile,
             contentDescription = null,

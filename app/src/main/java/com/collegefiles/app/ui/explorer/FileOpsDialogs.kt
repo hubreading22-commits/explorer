@@ -51,25 +51,35 @@ fun DeleteConfirmationDialog(
         onDismissRequest = onDismiss,
         title = { Text("Delete") },
         text = {
-            Column {
-                Text("Are you sure you want to delete:")
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = item.name,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.error,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-                if (item.isDirectory) {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "This will delete the folder and all its contents.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+            if (item.isDirectory) {
+                Text("Delete \"${item.name}\" and all files and folders inside it?")
+            } else {
+                Text("Permanently delete \"${item.name}\"?")
             }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = onConfirm,
+                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+            ) { Text("Delete") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        }
+    )
+}
+
+@Composable
+fun BatchDeleteConfirmationDialog(
+    count: Int,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Delete Multiple Items") },
+        text = {
+            Text("Permanently delete $count selected items?")
         },
         confirmButton = {
             TextButton(

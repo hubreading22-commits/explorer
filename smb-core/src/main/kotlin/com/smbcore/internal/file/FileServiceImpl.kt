@@ -108,11 +108,12 @@ internal class FileServiceImpl(
         shareName: String, 
         remotePath: String, 
         expectedSize: Long,
+        overwrite: Boolean = false,
         onProgress: suspend (UploadProgress) -> Unit,
         onStateChange: suspend (UploadState) -> Unit
     ): SmbResult<Unit> = withShare(shareName) { share ->
         
-        if (share.fileExists(remotePath)) {
+        if (!overwrite && share.fileExists(remotePath)) {
             onStateChange(UploadState.AlreadyExists)
             return@withShare SmbResult.Failure(SmbError.Unknown("File already exists"))
         }
@@ -231,6 +232,37 @@ internal class FileServiceImpl(
 
     suspend fun delete(shareName: String, path: String): SmbResult<Unit> = withShare(shareName) { share ->
         share.rm(path)
+        SmbResult.Success(Unit)
+    }
+
+    suspend fun deleteRecursive(
+        shareName: String,
+        path: String,
+        onProgress: suspend (deletedCount: Int) -> Unit
+    ): SmbResult<Unit> = withShare(shareName) { share ->
+        var count = 0
+
+        suspend fun deleteInternal(currentPath: String) {
+            if (!kotlinx.coroutines.currentCoroutineContext().isActive) {
+                throw kotlinx.coroutines.CancellationException("Delete cancelled")
+            }
+            if (share.folderExists(currentPath)) {
+                for (f in share.list(currentPath, "*")) {
+                    if (f.fileName == "." || f.fileName == "..") continue
+                    val childPath = if (currentPath.isEmpty()) f.fileName else "$currentPath\\${f.fileName}"
+                    deleteInternal(childPath)
+                }
+                share.rmdir(currentPath)
+                count++
+                onProgress(count)
+            } else if (share.fileExists(currentPath)) {
+                share.rm(currentPath)
+                count++
+                onProgress(count)
+            }
+        }
+
+        deleteInternal(path)
         SmbResult.Success(Unit)
     }
 

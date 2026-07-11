@@ -55,7 +55,8 @@ class FileOpsViewModel(
                 showRenameDialog = false,
                 showDeleteDialog = false,
                 showCreateFolderDialog = false,
-                showActionSheet = false
+                showActionSheet = false,
+                showBatchDeleteDialog = false
             )
         }
     }
@@ -66,8 +67,34 @@ class FileOpsViewModel(
 
     // ─── Operations ──────────────────────────────────────────────────────────────
 
+    object FilenameValidator {
+        private val reservedNames = setOf(
+            "CON", "PRN", "AUX", "NUL",
+            "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9",
+            "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9"
+        )
+
+        fun validate(name: String): String? {
+            if (name.isBlank()) return "Name cannot be empty"
+            if (name == "." || name == "..") return "Invalid name '.' or '..'"
+            if (name.endsWith(" ") || name.endsWith(".")) return "Name cannot end with a space or dot"
+            val baseName = name.substringBeforeLast('.').uppercase()
+            if (reservedNames.contains(baseName)) return "Reserved device name"
+            val invalidChars = listOf('\\', '/', ':', '*', '?', '"', '<', '>', '|')
+            if (name.any { it in invalidChars }) return "Name contains invalid characters"
+            return null
+        }
+    }
+
     fun rename(shareName: String, newName: String, onSuccess: () -> Unit) {
         val item = _state.value.targetItem ?: return
+        
+        val errorMsg = FilenameValidator.validate(newName)
+        if (errorMsg != null) {
+            _state.update { it.copy(error = errorMsg) }
+            return
+        }
+
         _state.update { it.copy(isLoading = true, showRenameDialog = false) }
 
         viewModelScope.launch {
@@ -80,7 +107,12 @@ class FileOpsViewModel(
                     onSuccess()
                 }
                 is SmbResult.Failure -> {
-                    _state.update { it.copy(isLoading = false, error = "Rename failed. Check permissions.") }
+                    val msg = when (result.error) {
+                        is SmbError.AlreadyExists -> "A file with that name already exists."
+                        is SmbError.PermissionDenied -> "Permission denied."
+                        else -> "Rename failed."
+                    }
+                    _state.update { it.copy(isLoading = false, error = msg) }
                 }
             }
         }
@@ -107,7 +139,12 @@ class FileOpsViewModel(
     }
 
     fun createFolder(shareName: String, currentPath: String, folderName: String, onSuccess: () -> Unit) {
-        if (folderName.isBlank()) return
+        val errorMsg = FilenameValidator.validate(folderName)
+        if (errorMsg != null) {
+            _state.update { it.copy(error = errorMsg) }
+            return
+        }
+
         val fullPath = if (currentPath.isEmpty()) folderName else "$currentPath\\$folderName"
         _state.update { it.copy(isLoading = true, showCreateFolderDialog = false) }
 
@@ -121,12 +158,12 @@ class FileOpsViewModel(
                     onSuccess()
                 }
                 is SmbResult.Failure -> {
-                    val errorMsg = if (result.error is com.smbcore.model.SmbError.AlreadyExists) {
+                    val errorMsgStr = if (result.error is com.smbcore.model.SmbError.AlreadyExists) {
                         "Folder already exists."
                     } else {
                         "Failed to create folder."
                     }
-                    _state.update { it.copy(isLoading = false, error = errorMsg) }
+                    _state.update { it.copy(isLoading = false, error = errorMsgStr) }
                 }
             }
         }
@@ -135,60 +172,46 @@ class FileOpsViewModel(
     fun upload(uri: Uri, shareName: String, remotePath: String, fileName: String, onSuccess: () -> Unit) {
         val fullRemotePath = if (remotePath.isEmpty()) fileName else "$remotePath\\$fileName"
         AppModule.uploadManager.enqueueUpload(uri, shareName, fullRemotePath)
-        _state.update { it.copy(successMessage = "Upload started in background") }
         onSuccess()
     }
 
-    // ─── Clipboard ───────────────────────────────────────────────────────────────
+    // ─── Batch Operations ────────────────────────────────────────────────────────
 
-    fun copyItem(shareName: String) {
-        val item = _state.value.targetItem ?: return
-        clipboardItem = ClipboardItem(item, shareName, isCut = false)
-        _state.update { it.copy(showActionSheet = false, successMessage = "Copied to clipboard") }
+    fun requestBatchDelete(items: Set<com.smbcore.model.SmbPath>) {
+        if (items.isEmpty()) return
+        _state.update { it.copy(batchTargetItems = items, showBatchDeleteDialog = true) }
     }
 
-    fun cutItem(shareName: String) {
-        val item = _state.value.targetItem ?: return
-        clipboardItem = ClipboardItem(item, shareName, isCut = true)
-        _state.update { it.copy(showActionSheet = false, successMessage = "Cut to clipboard") }
+    fun executeBatchDelete(onSuccess: () -> Unit) {
+        val items = _state.value.batchTargetItems.toList()
+        _state.update { it.copy(showBatchDeleteDialog = false, batchTargetItems = emptySet()) }
+        AppModule.fileOperationManager.deleteItems(items)
+        onSuccess()
     }
 
-    fun clearClipboard() {
-        clipboardItem = null
-        // Trigger a state update so the UI refreshes
-        _state.update { it.copy(successMessage = null) }
+    fun requestBatchCopy(items: Set<com.smbcore.model.SmbPath>) {
+        if (items.isEmpty()) return
+        // Ideally this would open a destination picker. For now, we simulate starting it.
+        _state.update { it.copy(batchTargetItems = items, successMessage = "Select destination to copy to") }
     }
 
-    fun paste(currentShare: String, currentPath: String, onSuccess: () -> Unit) {
-        val clip = clipboardItem ?: return
-        _state.update { it.copy(isLoading = true) }
+    fun executeBatchCopy(destShare: String, destPath: String, onSuccess: () -> Unit) {
+        val items = _state.value.batchTargetItems.toList()
+        _state.update { it.copy(batchTargetItems = emptySet()) }
+        AppModule.fileOperationManager.copyItems(items, destShare, destPath)
+        onSuccess()
+    }
 
-        val destPath = if (currentPath.isEmpty()) clip.item.name else "$currentPath\\${clip.item.name}"
+    fun requestBatchMove(items: Set<com.smbcore.model.SmbPath>) {
+        if (items.isEmpty()) return
+        // Ideally this would open a destination picker.
+        _state.update { it.copy(batchTargetItems = items, successMessage = "Select destination to move to") }
+    }
 
-        viewModelScope.launch {
-            val result = withContext(Dispatchers.IO) {
-                if (clip.isCut) {
-                    smbClient.move(clip.sourceShare, clip.item.path, currentShare, destPath)
-                } else {
-                    smbClient.copy(clip.sourceShare, clip.item.path, currentShare, destPath)
-                }
-            }
-            when (result) {
-                is SmbResult.Success -> {
-                    if (clip.isCut) clipboardItem = null // Clear after move
-                    _state.update { it.copy(isLoading = false, successMessage = "Paste complete") }
-                    onSuccess()
-                }
-                is SmbResult.Failure -> {
-                    _state.update { it.copy(isLoading = false, error = "Paste failed. Check permissions.") }
-                }
-            }
-        }
+    fun executeBatchMove(destShare: String, destPath: String, onSuccess: () -> Unit) {
+        val items = _state.value.batchTargetItems.toList()
+        _state.update { it.copy(batchTargetItems = emptySet()) }
+        AppModule.fileOperationManager.moveItems(items, destShare, destPath)
+        onSuccess()
     }
 }
-
-data class ClipboardItem(
-    val item: FileItem,
-    val sourceShare: String,
-    val isCut: Boolean
-)
