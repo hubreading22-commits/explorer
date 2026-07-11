@@ -252,7 +252,7 @@ internal class FileServiceImpl(
                     val childPath = if (currentPath.isEmpty()) f.fileName else "$currentPath\\${f.fileName}"
                     deleteInternal(childPath)
                 }
-                share.rmdir(currentPath)
+                share.rmdir(currentPath, false)
                 count++
                 onProgress(count)
             } else if (share.fileExists(currentPath)) {
