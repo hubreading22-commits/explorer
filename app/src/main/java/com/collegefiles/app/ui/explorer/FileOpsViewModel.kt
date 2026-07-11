@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import android.net.Uri
+import com.smbcore.model.SmbError
 
 class FileOpsViewModel(
     private val smbClient: SmbClient = AppModule.smbClient
@@ -21,9 +22,6 @@ class FileOpsViewModel(
 
     private val _state = MutableStateFlow(FileOpsState())
     val state: StateFlow<FileOpsState> = _state.asStateFlow()
-
-    private var clipboardItem: ClipboardItem? = null
-    val hasClipboardItem: Boolean get() = clipboardItem != null
 
     // ─── Action Sheet ────────────────────────────────────────────────────────────
 
