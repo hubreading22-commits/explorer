@@ -189,27 +189,30 @@ class FileOpsViewModel(
 
     fun requestBatchCopy(items: Set<com.smbcore.model.SmbPath>) {
         if (items.isEmpty()) return
-        // Ideally this would open a destination picker. For now, we simulate starting it.
-        _state.update { it.copy(batchTargetItems = items, successMessage = "Select destination to copy to") }
-    }
-
-    fun executeBatchCopy(destShare: String, destPath: String, onSuccess: () -> Unit) {
-        val items = _state.value.batchTargetItems.toList()
-        _state.update { it.copy(batchTargetItems = emptySet()) }
-        AppModule.fileOperationManager.copyItems(items, destShare, destPath)
-        onSuccess()
+        AppModule.pendingBatchOperation.value = AppModule.PendingBatchOperation(AppModule.BatchOperationType.COPY, items)
+        _state.update { it.copy(batchTargetItems = emptySet(), showActionSheet = false, successMessage = "Select destination to copy to") }
     }
 
     fun requestBatchMove(items: Set<com.smbcore.model.SmbPath>) {
         if (items.isEmpty()) return
-        // Ideally this would open a destination picker.
-        _state.update { it.copy(batchTargetItems = items, successMessage = "Select destination to move to") }
+        AppModule.pendingBatchOperation.value = AppModule.PendingBatchOperation(AppModule.BatchOperationType.MOVE, items)
+        _state.update { it.copy(batchTargetItems = emptySet(), showActionSheet = false, successMessage = "Select destination to move to") }
     }
 
-    fun executeBatchMove(destShare: String, destPath: String, onSuccess: () -> Unit) {
-        val items = _state.value.batchTargetItems.toList()
-        _state.update { it.copy(batchTargetItems = emptySet()) }
-        AppModule.fileOperationManager.moveItems(items, destShare, destPath)
+    fun executePendingOperation(destShare: String, destPath: String, onSuccess: () -> Unit) {
+        val pending = AppModule.pendingBatchOperation.value ?: return
+        AppModule.pendingBatchOperation.value = null
+        val items = pending.items.toList()
+        if (pending.type == AppModule.BatchOperationType.COPY) {
+            AppModule.fileOperationManager.copyItems(items, destShare, destPath)
+        } else {
+            AppModule.fileOperationManager.moveItems(items, destShare, destPath)
+        }
+        _state.update { it.copy(successMessage = if (pending.type == AppModule.BatchOperationType.COPY) "Copying..." else "Moving...") }
         onSuccess()
+    }
+    
+    fun cancelPendingOperation() {
+        AppModule.pendingBatchOperation.value = null
     }
 }

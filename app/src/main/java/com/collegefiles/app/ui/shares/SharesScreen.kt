@@ -54,6 +54,38 @@ fun SharesScreen(
                         IconButton(onClick = { viewModel.refresh() }) {
                             Icon(Icons.Default.Refresh, contentDescription = "Refresh")
                         }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        var showLogoutDialog by remember { mutableStateOf(false) }
+                        if (showLogoutDialog) {
+                            AlertDialog(
+                                onDismissRequest = { showLogoutDialog = false },
+                                title = { Text("Logout") },
+                                text = { Text("Are you sure you want to logout?") },
+                                confirmButton = {
+                                    TextButton(
+                                        onClick = {
+                                            showLogoutDialog = false
+                                            onSessionExpired() // Treating manual logout same as session expiry
+                                        },
+                                        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                                    ) { Text("Logout") }
+                                },
+                                dismissButton = {
+                                    TextButton(onClick = { showLogoutDialog = false }) { Text("Cancel") }
+                                }
+                            )
+                        }
+                        FilledTonalButton(
+                            onClick = { showLogoutDialog = true },
+                            colors = ButtonDefaults.filledTonalButtonColors(
+                                containerColor = MaterialTheme.colorScheme.errorContainer,
+                                contentColor = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                        ) {
+                            Icon(androidx.compose.material.icons.filled.ExitToApp, contentDescription = "Logout", modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Logout")
+                        }
                     }
                 }
             )

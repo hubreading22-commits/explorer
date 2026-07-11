@@ -339,6 +339,22 @@ fun ExplorerScreen(
                         text = { Text("New Folder") }
                     )
                 }
+                val pendingOperation by com.collegefiles.app.di.AppModule.pendingBatchOperation.collectAsState()
+                if (pendingOperation != null) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        SmallFloatingActionButton(
+                            onClick = { fileOpsViewModel.cancelPendingOperation() },
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer
+                        ) {
+                            Icon(Icons.Default.Close, "Cancel Paste")
+                        }
+                        ExtendedFloatingActionButton(
+                            onClick = { fileOpsViewModel.executePendingOperation(state.currentShare, state.breadcrumbs.joinToString("\\")) { viewModel.refresh() } },
+                            icon = { Icon(Icons.Default.ContentPaste, "Paste Here") },
+                            text = { Text(if (pendingOperation?.type == com.collegefiles.app.di.AppModule.BatchOperationType.COPY) "Copy Here" else "Move Here") }
+                        )
+                    }
+                }
             }
         }
     ) { paddingValues ->

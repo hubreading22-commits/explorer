@@ -33,6 +33,15 @@ object AppModule {
         
     val pendingUploads = kotlinx.coroutines.flow.MutableStateFlow<Pair<android.net.Uri, String>?>(null)
 
+    enum class BatchOperationType { COPY, MOVE }
+
+    data class PendingBatchOperation(
+        val type: BatchOperationType,
+        val items: Set<com.smbcore.model.SmbPath>
+    )
+
+    val pendingBatchOperation = kotlinx.coroutines.flow.MutableStateFlow<PendingBatchOperation?>(null)
+
     fun initialize(context: android.content.Context) {
         documentSessionService = com.collegefiles.app.sync.DocumentSessionService(
             context = context,
