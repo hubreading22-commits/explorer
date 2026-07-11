@@ -45,8 +45,8 @@ internal class ConnectionManagerImpl(
     private fun recreateSmbClient() {
         try { smbClient?.close() } catch (_: Exception) {}
         val smbjConfig = SmbjConfig.builder()
-            .withReadBufferSize(config.bufferSize)
-            .withWriteBufferSize(config.bufferSize)
+            .withReadBufferSize(config.transferBufferSize)
+            .withWriteBufferSize(config.transferBufferSize)
             .withReadTimeout(config.readTimeout, TimeUnit.MILLISECONDS)
             .withWriteTimeout(config.writeTimeout, TimeUnit.MILLISECONDS)
             .withTransactTimeout(config.connectTimeout, TimeUnit.MILLISECONDS)

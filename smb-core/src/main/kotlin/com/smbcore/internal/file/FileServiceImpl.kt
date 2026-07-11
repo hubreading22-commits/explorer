@@ -133,7 +133,7 @@ internal class FileServiceImpl(
         var success = false
         try {
             file.outputStream.use { output ->
-                val buffer = ByteArray(config.bufferSize)
+                val buffer = ByteArray(config.transferBufferSize)
                 var bytesRead: Int
                 var totalTransferred = 0L
                 val startTime = System.currentTimeMillis()
@@ -306,7 +306,7 @@ internal class FileServiceImpl(
                     
                     sFile.inputStream.use { input ->
                         dFile.outputStream.use { output ->
-                            input.copyTo(output, config.bufferSize)
+                            input.copyTo(output, config.transferBufferSize)
                         }
                     }
                     sFile.close()
