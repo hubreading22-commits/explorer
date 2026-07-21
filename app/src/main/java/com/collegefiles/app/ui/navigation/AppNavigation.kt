@@ -23,8 +23,6 @@ import com.collegefiles.app.ui.viewer.ViewerViewModel
 import com.collegefiles.app.ui.viewer.audio.AudioPlayerScreen
 import com.collegefiles.app.ui.viewer.image.ImageViewerScreen
 import com.collegefiles.app.ui.viewer.image.ImageViewerViewModel
-import com.collegefiles.app.ui.viewer.pdf.PdfViewerScreen
-import com.collegefiles.app.ui.viewer.pdf.PdfViewerViewModel
 import com.collegefiles.app.ui.viewer.text.TextViewerScreen
 import com.collegefiles.app.ui.viewer.text.TextViewerViewModel
 import com.collegefiles.app.ui.viewer.unsupported.RestrictedScreen
@@ -99,9 +97,9 @@ fun AppNavigation() {
                 },
                 onFileClick = { file ->
                     val ext = file.name.substringAfterLast('.').lowercase()
-                    val editableExts = listOf("doc", "docx", "xls", "xlsx", "ppt", "pptx", "txt")
+                    val externalDocExts = listOf("doc", "docx", "xls", "xlsx", "ppt", "pptx", "pdf", "txt")
                     
-                    if (ext in editableExts) {
+                    if (ext in externalDocExts) {
                         explorerViewModel.openDocument(file)
                     } else {
                         // Open internally
@@ -124,13 +122,6 @@ fun AppNavigation() {
                 RestrictedScreen(file = file, onBack = onBack)
             } else {
                 when (state.destination) {
-                    ViewerDestination.Pdf -> {
-                        val cacheDir = LocalContext.current.cacheDir
-                        PdfViewerScreen(
-                            viewModel = remember(file?.path) { PdfViewerViewModel(state.shareName, file!!, cacheDir) },
-                            onBack = onBack
-                        )
-                    }
                     ViewerDestination.Image -> ImageViewerScreen(
                         viewModel = remember(file?.path) { ImageViewerViewModel(state.shareName, file!!) },
                         onBack = onBack

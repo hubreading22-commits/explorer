@@ -6,6 +6,7 @@ data class ExplorerState(
     val currentShare: String = "",
     val breadcrumbs: List<String> = emptyList(),
     val files: List<FileItem> = emptyList(),
+    val searchQuery: String = "",
     val selectedFile: FileItem? = null,
     val isLoading: Boolean = true,
     val connectionState: ConnectionState = ConnectionState.Connecting,

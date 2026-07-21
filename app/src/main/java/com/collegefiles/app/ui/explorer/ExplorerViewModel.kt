@@ -29,6 +29,10 @@ class ExplorerViewModel(
         loadDirectory()
     }
 
+    fun updateSearchQuery(query: String) {
+        _state.update { it.copy(searchQuery = query) }
+    }
+
     fun refresh() {
         loadDirectory()
     }
@@ -36,7 +40,7 @@ class ExplorerViewModel(
     fun onFolderClick(folder: FileItem) {
         val newBreadcrumbs = _state.value.breadcrumbs.toMutableList()
         newBreadcrumbs.add(folder.name)
-        _state.update { it.copy(breadcrumbs = newBreadcrumbs) }
+        _state.update { it.copy(breadcrumbs = newBreadcrumbs, searchQuery = "") }
         loadDirectory()
     }
 

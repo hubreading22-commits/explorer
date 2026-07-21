@@ -26,8 +26,12 @@ import androidx.compose.ui.unit.dp
 import android.content.Context
 import android.net.Uri
 import android.provider.OpenableColumns
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalFocusManager
 import com.collegefiles.app.config.Capability
 import com.collegefiles.app.di.AppModule
+import com.collegefiles.app.ui.common.AlphabeticalFastScroller
 import com.smbcore.model.FileItem
 import kotlinx.coroutines.launch
 
@@ -44,6 +48,15 @@ fun ExplorerScreen(
     val state by viewModel.state.collectAsState()
     val opsState by fileOpsViewModel.state.collectAsState()
     val listState = rememberLazyListState()
+    val focusManager = LocalFocusManager.current
+
+    val filteredFiles = remember(state.files, state.searchQuery) {
+        if (state.searchQuery.isBlank()) {
+            state.files
+        } else {
+            state.files.filter { it.name.contains(state.searchQuery, ignoreCase = true) }
+        }
+    }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -252,9 +265,17 @@ fun ExplorerScreen(
         }
     }
 
-    Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) },
-        topBar = {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .pointerInput(Unit) {
+                detectTapGestures(onTap = { focusManager.clearFocus() })
+            }
+    ) {
+        Scaffold(
+            snackbarHost = { SnackbarHost(snackbarHostState) },
+            floatingActionButtonPosition = FabPosition.End,
+            topBar = {
             Column {
                 if (state.selectionMode) {
                     TopAppBar(
@@ -339,7 +360,7 @@ fun ExplorerScreen(
             Column(
                 horizontalAlignment = Alignment.End, 
                 verticalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.padding(bottom = 32.dp)
+                modifier = Modifier.padding(bottom = 32.dp, end = 48.dp)
             ) {
                 if (canUpload) {
                     ExtendedFloatingActionButton(
@@ -380,6 +401,9 @@ fun ExplorerScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
+                .pointerInput(Unit) {
+                    detectTapGestures(onTap = { focusManager.clearFocus() })
+                }
         ) {
             if (state.isDownloading && state.downloadingFileName != null) {
                 DownloadProgressBanner(
@@ -405,6 +429,27 @@ fun ExplorerScreen(
                 )
             }
             
+            if (!state.isLoading && state.error == null && state.files.isNotEmpty()) {
+                OutlinedTextField(
+                    value = state.searchQuery,
+                    onValueChange = { viewModel.updateSearchQuery(it) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 6.dp),
+                    placeholder = { Text("Search files & folders...") },
+                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search") },
+                    trailingIcon = {
+                        if (state.searchQuery.isNotEmpty()) {
+                            IconButton(onClick = { viewModel.updateSearchQuery("") }) {
+                                Icon(Icons.Default.Close, contentDescription = "Clear search")
+                            }
+                        }
+                    },
+                    singleLine = true,
+                    shape = RoundedCornerShape(24.dp)
+                )
+            }
+            
             Box(modifier = Modifier.weight(1f)) {
                 when {
                     state.isLoading -> {
@@ -416,33 +461,50 @@ fun ExplorerScreen(
                     state.files.isEmpty() -> {
                         ExplorerEmptyState()
                     }
-                    else -> {
-                        LazyColumn(
-                            state = listState,
-                            modifier = Modifier.fillMaxSize()
+                    filteredFiles.isEmpty() -> {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
                         ) {
-                            items(state.files, key = { it.path }) { file ->
-                                FileItemRow(
-                                    item = file,
-                                    selectionMode = state.selectionMode,
-                                    isSelected = state.selectedItems.contains(com.smbcore.model.SmbPath(state.currentShare, file.path)),
-                                    onClick = {
-                                        if (state.selectionMode) {
-                                            viewModel.toggleSelection(file)
-                                        } else {
-                                            if (file.isDirectory) {
-                                                viewModel.onFolderClick(file)
+                            Text(
+                                text = "No items matching \"${state.searchQuery}\"",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                    else -> {
+                        AlphabeticalFastScroller(
+                            items = filteredFiles,
+                            getItemName = { it.name },
+                            listState = listState
+                        ) { innerModifier ->
+                            LazyColumn(
+                                state = listState,
+                                modifier = innerModifier
+                            ) {
+                                items(filteredFiles, key = { it.path }) { file ->
+                                    FileItemRow(
+                                        item = file,
+                                        selectionMode = state.selectionMode,
+                                        isSelected = state.selectedItems.contains(com.smbcore.model.SmbPath(state.currentShare, file.path)),
+                                        onClick = {
+                                            if (state.selectionMode) {
+                                                viewModel.toggleSelection(file)
                                             } else {
-                                                onFileClick(file) // Delegate to router in AppNavigation
+                                                if (file.isDirectory) {
+                                                    viewModel.onFolderClick(file)
+                                                } else {
+                                                    onFileClick(file)
+                                                }
                                             }
+                                        },
+                                        onLongClick = {
+                                            viewModel.onLongClick(file)
                                         }
-                                    },
-                                    onLongClick = {
-                                        viewModel.onLongClick(file)
-                                        // Also trigger fileOps if needed, but for now we enter selection mode
-                                    }
-                                )
-                                Divider(modifier = Modifier.padding(start = 72.dp)) // ChromeOS style offset divider
+                                    )
+                                    Divider(modifier = Modifier.padding(start = 72.dp))
+                                }
                             }
                         }
                     }
@@ -450,6 +512,7 @@ fun ExplorerScreen(
             }
         }
     }
+}
 }
 
 @Composable

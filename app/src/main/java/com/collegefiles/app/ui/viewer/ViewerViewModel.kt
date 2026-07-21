@@ -25,7 +25,6 @@ class ViewerViewModel : ViewModel() {
         }
 
         val destination = when (file.type) {
-            FileType.PDF -> ViewerDestination.Pdf
             FileType.IMAGE -> ViewerDestination.Image
             FileType.VIDEO -> ViewerDestination.Video
             FileType.AUDIO -> ViewerDestination.Audio
@@ -56,7 +55,7 @@ class ViewerViewModel : ViewModel() {
 }
 
 enum class ViewerDestination {
-    Pdf, Image, Video, Audio, Text, Unsupported, Restricted
+    Image, Video, Audio, Text, Unsupported, Restricted
 }
 
 private fun FileType.toCapability(): Capability? = when (this) {

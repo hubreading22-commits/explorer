@@ -90,12 +90,22 @@ class DocumentSessionService(
             repository.updateSession(session.sessionId) { it.copy(state = SessionState.CACHED) }
 
             val uri = FileProvider.getUriForFile(context, "com.collegefiles.app.fileprovider", localFile)
-            val intent = Intent(Intent.ACTION_EDIT).apply {
-                setDataAndType(uri, getMimeType(fileItem.name))
+            val mimeType = getMimeType(fileItem.name)
+            val intent = Intent(Intent.ACTION_VIEW).apply {
+                setDataAndType(uri, mimeType)
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }
-            context.startActivity(intent)
+            try {
+                context.startActivity(intent)
+            } catch (e: android.content.ActivityNotFoundException) {
+                val editIntent = Intent(Intent.ACTION_EDIT).apply {
+                    setDataAndType(uri, mimeType)
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                context.startActivity(editIntent)
+            }
 
             repository.updateSession(session.sessionId) { it.copy(state = SessionState.OPENED) }
 

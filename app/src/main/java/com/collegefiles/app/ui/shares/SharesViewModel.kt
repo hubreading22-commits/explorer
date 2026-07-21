@@ -23,6 +23,10 @@ class SharesViewModel(
 
 
 
+    fun updateSearchQuery(query: String) {
+        _state.update { it.copy(searchQuery = query) }
+    }
+
     fun refresh() {
         loadShares()
     }
@@ -38,7 +42,9 @@ class SharesViewModel(
             when (result) {
                 is SmbResult.Success -> {
                     // Filter out hidden/administrative shares if needed (typically ending with $)
-                    val visibleShares = result.data.filter { !it.name.endsWith("$") }
+                    val visibleShares = result.data
+                        .filter { !it.name.endsWith("$") }
+                        .sortedBy { it.name.lowercase() }
                     _state.update { 
                         it.copy(
                             isLoading = false,
